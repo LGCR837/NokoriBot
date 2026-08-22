@@ -1,7 +1,9 @@
 // ===== WebUI 服务器（Express，端口 4520） =====
-// 提供插件管理、Bot 配置、日志查看的 REST API 与前端静态页面
+// 提供插件管理、Bot 配置、日志查看的 REST API 与 React 前端 SPA
 import express, { Express, Request, Response, Router } from 'express';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import { ConfigManager } from '../config';
 import { BotClient } from '../protocol/bot';
 import { logger, readRecentLogs, readStructuredLogs, setLogLevel } from '../logger';
@@ -15,231 +17,366 @@ export interface WebUiOptions {
   host?: string;
 }
 
+// ===== 简易 JWT 实现 =====
+const JWT_SECRET = crypto.randomBytes(32).toString('hex');
+const TOKEN_TTL = 24 * 60 * 60 * 1000; // 24h
+
+function createToken(): string {
+  const payload = { iat: Date.now(), exp: Date.now() + TOKEN_TTL };
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${sig}`;
+}
+
+function verifyToken(token: string): boolean {
+  try {
+    const [header, body, sig] = token.split('.');
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    if (sig !== expected) return false;
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
+    return payload.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+// 密码哈希（SHA-512 + salt，与旧版兼容）
+function hashPassword(password: string, salt?: string): { hash: string; salt: string } {
+  const s = salt || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.createHash('sha512').update(s + password).digest('hex');
+  return { hash, salt: s };
+}
+
+function getPasswordHash(config: ConfigManager): { hash: string; salt: string } | null {
+  const cfg = config.getAll() as any;
+  if (cfg.webuiPasswordHash && cfg.webuiPasswordSalt) {
+    return { hash: cfg.webuiPasswordHash, salt: cfg.webuiPasswordSalt };
+  }
+  return null;
+}
+
+// 独立密码系统：首次访问时无密码，用户自行设置
+
 export function createWebServer(opts: WebUiOptions): Express {
   const { config, bot } = opts;
   const app = express();
   app.use(express.json());
 
+  // 不再自动设置密码，由用户首次访问时自行设置
+
   const apiRouter = Router();
+
+  // ===== 认证 =====
+
+  // 检查是否已设置密码（首次访问时返回 false，前端显示设置密码表单）
+  apiRouter.get('/auth/has-password', (_req: Request, res: Response) => {
+    const stored = getPasswordHash(config);
+    res.json({ hasPassword: stored !== null });
+  });
+
+  // 登录：验证密码，返回 JWT
+  // 如果未设置密码，任意密码均可登录并自动设置
+  apiRouter.post('/login', (req: Request, res: Response) => {
+    const { password } = req.body || {};
+    if (!password) {
+      res.status(400).json({ error: '请输入密码' });
+      return;
+    }
+    const stored = getPasswordHash(config);
+    if (!stored) {
+      // 首次登录，自动设置密码
+      const { hash, salt } = hashPassword(password);
+      config.update({ webuiPasswordHash: hash, webuiPasswordSalt: salt } as any);
+      const token = createToken();
+      res.json({ token, message: '密码已设置，登录成功' });
+      return;
+    }
+    const { hash } = hashPassword(password, stored.salt);
+    if (hash !== stored.hash) {
+      res.status(401).json({ error: '密码错误' });
+      return;
+    }
+    const token = createToken();
+    res.json({ token, message: '登录成功' });
+  });
+
+  // 验证 token
+  apiRouter.get('/auth/state', (req: Request, res: Response) => {
+    const auth = req.headers.authorization;
+    if (auth?.startsWith('Bearer ') && verifyToken(auth.slice(7))) {
+      res.json({ loggedIn: true });
+    } else {
+      res.json({ loggedIn: false });
+    }
+  });
+
+  // 修改密码
+  // 如果 oldPassword 为空且当前无密码，直接设置新密码
+  apiRouter.post('/auth/change-password', (req: Request, res: Response) => {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ') || !verifyToken(auth.slice(7))) {
+      res.status(401).json({ error: '未登录' });
+      return;
+    }
+    const { oldPassword, newPassword } = req.body || {};
+    if (!newPassword) {
+      res.status(400).json({ error: '请提供新密码' });
+      return;
+    }
+    const stored = getPasswordHash(config);
+    if (!stored) {
+      // 无密码，直接设置
+      const { hash, salt } = hashPassword(newPassword);
+      config.update({ webuiPasswordHash: hash, webuiPasswordSalt: salt } as any);
+      res.json({ message: '密码设置成功' });
+      return;
+    }
+    if (!oldPassword) {
+      res.status(400).json({ error: '请提供旧密码' });
+      return;
+    }
+    const { hash: oldHash } = hashPassword(oldPassword, stored.salt);
+    if (oldHash !== stored.hash) {
+      res.status(401).json({ error: '旧密码错误' });
+      return;
+    }
+    const { hash, salt } = hashPassword(newPassword);
+    config.update({ webuiPasswordHash: hash, webuiPasswordSalt: salt } as any);
+    res.json({ message: '密码修改成功' });
+  });
+
+  // ===== 认证中间件 =====
+  const requireAuth = (req: Request, res: Response, next: Function) => {
+    const auth = req.headers.authorization;
+    if (auth?.startsWith('Bearer ') && verifyToken(auth.slice(7))) {
+      next();
+    } else {
+      res.status(401).json({ error: '未登录' });
+    }
+  };
+
+  // ===== Bot 状态 =====
+
+  apiRouter.get('/status', requireAuth, (_req: Request, res: Response) => {
+    const status = bot.getStatus();
+    const mem = process.memoryUsage();
+    const plugins = bot.plugins.getAllPlugins();
+    res.json({
+      bot: {
+        running: status.online || false,
+        loggedIn: status.online || false,
+        myUid: status.uid || null,
+        username: status.username || null,
+        backendOrigin: config.get<string>('backendOrigin') || '',
+        mediaOrigin: config.get<string>('mediaOrigin') || '',
+        deviceId: config.get<string>('deviceId') || '',
+      },
+      uptime: status.uptime || 0,
+      memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+      plugins: Array.isArray(plugins) ? plugins : [],
+    });
+  });
 
   // ===== 插件管理 =====
 
-  // 获取所有插件信息
-  apiRouter.get('/plugins', (_req: Request, res: Response) => {
+  apiRouter.get('/plugins', requireAuth, (_req: Request, res: Response) => {
     const plugins = bot.plugins.getAllPlugins();
-    res.json({ plugins });
+    res.json(Array.isArray(plugins) ? plugins : []);
   });
 
-  // 切换插件启用状态
-  apiRouter.post('/plugins/:name/toggle', async (req: Request, res: Response) => {
+  apiRouter.post('/plugins/:name/toggle', requireAuth, async (req: Request, res: Response) => {
     try {
       const enabled = await bot.plugins.togglePlugin(req.params.name);
       res.json({ success: true, enabled });
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // 重载单个插件
-  apiRouter.post('/plugins/:name/reload', async (req: Request, res: Response) => {
+  apiRouter.post('/plugins/:name/reload', requireAuth, async (req: Request, res: Response) => {
     try {
       await bot.plugins.reloadPlugin(req.params.name);
       res.json({ success: true });
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // 读取插件配置（config.json）
-  apiRouter.get('/plugins/:name/config', (req: Request, res: Response) => {
+  // ===== 联系人 =====
+
+  apiRouter.get('/friends', requireAuth, async (_req: Request, res: Response) => {
     try {
-      const config = bot.plugins.getPluginConfig(req.params.name);
-      res.json({ config });
+      const friends = await bot.getFriends(true);
+      res.json(Array.isArray(friends) ? friends : []);
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // 保存插件配置（config.json）
-  apiRouter.post('/plugins/:name/config', (req: Request, res: Response) => {
+  apiRouter.get('/groups', requireAuth, async (_req: Request, res: Response) => {
     try {
-      const config = req.body?.config;
-      if (!config || typeof config !== 'object') {
-        res.status(400).json({ success: false, error: '请求体需包含 config 对象' });
-        return;
-      }
-      bot.plugins.savePluginConfig(req.params.name, config);
-      res.json({ success: true });
+      const groups = await bot.getGroups(true);
+      res.json(Array.isArray(groups) ? groups : []);
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // ===== 联系人管理 =====
-
-  // 获取所有联系人与群组
-  apiRouter.get('/contacts', async (_req: Request, res: Response) => {
-    try {
-      const [friends, groups] = await Promise.all([bot.getFriends(true), bot.getGroups(true)]);
-      res.json({ friends, groups });
-    } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
-    }
-  });
-
-  // 添加好友（发送好友申请）
-  apiRouter.post('/contacts/friend', async (req: Request, res: Response) => {
+  apiRouter.post('/contacts/friend', requireAuth, async (req: Request, res: Response) => {
     try {
       const uid = String(req.body?.uid || '').trim();
-      if (!uid) {
-        res.status(400).json({ success: false, error: '缺少 uid' });
-        return;
-      }
+      if (!uid) { res.status(400).json({ error: '缺少 uid' }); return; }
       const data = await bot.api.post('/friends/request', toUidParam(uid));
       res.json({ success: true, data });
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // 加入群组
-  apiRouter.post('/contacts/group', async (req: Request, res: Response) => {
+  apiRouter.post('/contacts/group', requireAuth, async (req: Request, res: Response) => {
     try {
       const groupId = String(req.body?.group_id || '').trim();
-      if (!groupId) {
-        res.status(400).json({ success: false, error: '缺少 group_id' });
-        return;
-      }
+      if (!groupId) { res.status(400).json({ error: '缺少 group_id' }); return; }
       const data = await bot.api.post('/groups/join', { group_id: groupId });
       res.json({ success: true, data });
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // ===== Bot 状态与操作 =====
+  // ===== Bot 操作 =====
 
-  // 获取 Bot 状态
-  apiRouter.get('/bot/status', (_req: Request, res: Response) => {
+  apiRouter.get('/bot/status', requireAuth, (_req: Request, res: Response) => {
     const status = bot.getStatus();
-    res.json({
-      online: status.online,
-      username: status.username,
-      uid: status.uid,
-      uptime: status.uptime,
-    });
+    res.json({ online: status.online, username: status.username, uid: status.uid, uptime: status.uptime });
   });
 
-  // 手动触发登录
-  apiRouter.post('/bot/login', async (req: Request, res: Response) => {
+  apiRouter.post('/bot/login', requireAuth, async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body || {};
-      if (username || password) {
-        if (username) config.update({ username } as any);
-        if (password) config.update({ password } as any);
-      }
-      const u = config.get<string>('username');
-      const p = config.get<string>('password');
-      if (!u || !p) {
-        res.status(400).json({ success: false, error: '请在配置中填写账号密码' });
-        return;
-      }
+      if (username) config.update({ username } as any);
+      if (password) config.update({ password } as any);
       await bot.restart();
       res.json({ success: true });
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // 重启 Bot 核心（重新登录+重连）
-  apiRouter.post('/bot/restart', async (_req: Request, res: Response) => {
+  apiRouter.post('/bot/restart', requireAuth, async (_req: Request, res: Response) => {
     try {
       await bot.restart();
       res.json({ success: true });
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // 关闭 Bot（先优雅停止：关闭插件与 WS；10 秒超时未完成则强制退出；前端需双重确认）
-  apiRouter.post('/stop', async (_req: Request, res: Response) => {
+  apiRouter.post('/stop', requireAuth, async (_req: Request, res: Response) => {
     try {
       res.json({ success: true });
       logger.info('[WebUI] 收到关闭指令，正在停止 Bot...');
       setTimeout(() => {
-        let finished = false;
-        // 10s 超时兜底：优雅停止未完成则强制退出
-        const forceTimer = setTimeout(() => {
-          if (!finished) {
-            logger.warn('[WebUI] 停止超时（10s），强制退出进程');
-            process.exit(1);
-          }
-        }, 10000);
-        bot
-          .stop()
-          .then(() => {
-            finished = true;
-            clearTimeout(forceTimer);
-            logger.info('[WebUI] Bot 已优雅停止，退出进程');
-            process.exit(0);
-          })
-          .catch((e: any) => {
-            finished = true;
-            clearTimeout(forceTimer);
-            logger.warn(`[WebUI] 停止 Bot 异常: ${e.message}，退出进程`);
-            process.exit(1);
-          });
+        bot.stop().then(() => process.exit(0)).catch(() => process.exit(1));
       }, 300);
     } catch (e: any) {
-      res.status(400).json({ success: false, error: e.message });
+      res.status(400).json({ error: e.message });
     }
   });
 
-  // ===== 配置管理 =====
+  // ===== 配置 =====
 
-  // 获取当前配置（隐藏密码与 token）
-  apiRouter.get('/config', (_req: Request, res: Response) => {
+  apiRouter.get('/config', requireAuth, (_req: Request, res: Response) => {
     const cfg = config.getAll();
     res.json({
       backendOrigin: cfg.backendOrigin,
       mediaOrigin: cfg.mediaOrigin,
-      username: cfg.username,
       logLevel: cfg.logLevel,
       webuiPort: cfg.webuiPort,
-      user: cfg.user,
+      deviceId: cfg.deviceId,
+      user: (cfg as any).user,
     });
   });
 
-  // 更新配置（合并更新 + 持久化）
-  apiRouter.post('/config', (req: Request, res: Response) => {
+  apiRouter.post('/config', requireAuth, (req: Request, res: Response) => {
     const body = req.body || {};
+    const allowed = ['backendOrigin', 'mediaOrigin', 'logLevel', 'webuiPort'];
     const update: Record<string, any> = {};
-    const allowed = ['backendOrigin', 'mediaOrigin', 'username', 'password', 'logLevel', 'webuiPort'];
     for (const key of allowed) {
       if (body[key] !== undefined) update[key] = body[key];
     }
     if (Object.keys(update).length === 0) {
-      res.status(400).json({ success: false, error: '没有可更新的字段' });
+      res.status(400).json({ error: '没有可更新的字段' });
       return;
     }
     config.update(update as any);
     if (update.logLevel) setLogLevel(update.logLevel);
     logger.info(`[WebUI] 配置已更新: ${Object.keys(update).join(', ')}`);
-    res.json({ success: true });
+    res.json({ message: '配置已更新' });
   });
 
   // ===== 日志 =====
 
-  // 获取最近日志（结构化，供前端彩色渲染）
-  apiRouter.get('/logs', (req: Request, res: Response) => {
+  apiRouter.get('/logs', requireAuth, (req: Request, res: Response) => {
     const limit = Math.min(parseInt(String(req.query.limit || 300), 10) || 300, 1000);
-    res.json({ logs: readStructuredLogs(limit) });
+    const logs = readStructuredLogs(limit);
+    res.json(Array.isArray(logs) ? logs : []);
   });
 
-  // 挂载 API 路由与静态文件
+  // SSE 实时日志流
+  apiRouter.get('/logs/stream', (req: Request, res: Response) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write('data: {"type":"connected"}\n\n');
+
+    const interval = setInterval(() => {
+      const logs = readStructuredLogs(10);
+      if (Array.isArray(logs) && logs.length > 0) {
+        for (const entry of logs) {
+          res.write(`data: ${JSON.stringify(entry)}\n\n`);
+        }
+      }
+    }, 2000);
+
+    req.on('close', () => clearInterval(interval));
+  });
+
+  // SSE 实时状态流
+  apiRouter.get('/status/stream', (req: Request, res: Response) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write('data: {"type":"connected"}\n\n');
+
+    const interval = setInterval(() => {
+      const status = bot.getStatus();
+      const mem = process.memoryUsage();
+      res.write(`data: ${JSON.stringify({ bot: { running: status.online, loggedIn: status.online, myUid: status.uid }, memory: { heapUsed: mem.heapUsed, heapTotal: mem.heapTotal } })}\n\n`);
+    }, 5000);
+
+    req.on('close', () => clearInterval(interval));
+  });
+
+  // ===== 挂载 API 路由 =====
   app.use('/api', apiRouter);
+
+  // ===== 静态文件 + SPA Fallback =====
   const publicDir = WEBUI_PUBLIC_DIR;
-  app.use(express.static(publicDir));
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+    // SPA fallback：非 /api 路由一律返回 index.html
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.join(publicDir, 'index.html'));
+    });
+  }
 
   return app;
 }
@@ -248,7 +385,6 @@ export function createWebServer(opts: WebUiOptions): Express {
 export function startWebServer(opts: WebUiOptions): void {
   const app = createWebServer(opts);
   const port = opts.port || opts.config.get<number>('webuiPort') || 4520;
-  // 监听地址：优先显式传入 → 配置文件 webuiHost（默认 127.0.0.1；KataBump/容器公网部署时改为 0.0.0.0）
   const host = opts.host || opts.config.get<string>('webuiHost') || '127.0.0.1';
   app.listen(port, host, () => {
     logger.info(`[WebUI] 管理界面已启动: http://${host}:${port}`);

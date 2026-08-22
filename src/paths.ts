@@ -21,4 +21,4 @@ export const PROJECT_ROOT = findProjectRoot();
 export const CONFIG_PATH = path.join(PROJECT_ROOT, 'config.json');
 export const LOG_DIR = path.join(PROJECT_ROOT, 'logs');
 export const PLUGINS_DIR = path.join(PROJECT_ROOT, 'plugins');
-export const WEBUI_PUBLIC_DIR = path.join(PROJECT_ROOT, 'webui', 'public');
+export const WEBUI_PUBLIC_DIR = path.join(PROJECT_ROOT, 'webui', 'dist');

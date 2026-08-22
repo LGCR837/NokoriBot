@@ -3,6 +3,8 @@ node_modules/
 
 # ===== 构建产物 =====
 dist/
+webui/dist/
+webui/node_modules/
 *.tsbuildinfo
 
 # ===== 日志 =====
