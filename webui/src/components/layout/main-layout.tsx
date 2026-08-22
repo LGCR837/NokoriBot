@@ -129,7 +129,7 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
 
         <main className={cn('flex min-h-0 flex-1 flex-col')}>
           <ScrollArea className="flex-1 min-h-0" viewportClassName="[&>div]:!block">
-            <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8 2xl:max-w-[1600px]">
+            <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 2xl:max-w-[1600px]">
               <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={pathname}

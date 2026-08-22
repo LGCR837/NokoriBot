@@ -1,0 +1,8 @@
+{
+  "name": "nokoristats",
+  "version": "1.0.0",
+  "description": "Nokori 状态插件 #Nokori",
+  "author": "Aoharu Reverie",
+  "enabled": true,
+  "main": "index.ts"
+}

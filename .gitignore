@@ -15,7 +15,9 @@ logs/
 config.json
 
 # ===== 插件目录（含本地数据，不提交） =====
-plugins/
+plugins/*
+!plugins/nokoristats/
+!plugins/nokoristats/**
 
 # ===== 系统文件 =====
 .DS_Store

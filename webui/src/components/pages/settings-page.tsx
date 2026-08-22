@@ -67,6 +67,7 @@ const TAB_GROUPS: { title: string; tabs: TabDef[] }[] = [
     tabs: [
       { key: 'appearance', label: '外观', icon: Palette },
       { key: 'data', label: '数据与格式', icon: RefreshCw },
+      { key: 'advanced', label: '高级', icon: Code2 },
       { key: 'account', label: '账号安全', icon: ShieldCheck },
     ],
   },
