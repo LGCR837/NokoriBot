@@ -1,0 +1,42 @@
+{
+  "name": "nokoribot",
+  "version": "3",
+  "description": "基于 Node.js + TypeScript 的 OldChat 聊天机器人框架，API 层全面基于官方 oldchat-api-sdk（ECDH 签名、v1↔v2 映射、候选降级），支持热加载插件与 WebUI 管理",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "oldchat",
+    "chatbot",
+    "bot",
+    "framework",
+    "websocket",
+    "ecdhe",
+    "ncuid"
+  ],
+  "author": "LGCR837",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.100",
+    "axios": "^1.7.9",
+    "chokidar": "^3.6.0",
+    "d3-force": "^3.0.0",
+    "express": "^4.21.2",
+    "winston": "^3.17.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
