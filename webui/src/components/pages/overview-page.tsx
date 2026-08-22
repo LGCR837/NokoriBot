@@ -606,6 +606,9 @@ const HOST_GRID_COLS: Record<number, string> = { 1: 'lg:grid-cols-1', 2: 'lg:gri
 function HostBlock({ config }: { config: HostConfig }) {
   const { status, refreshStatus, resources } = useAppState();
   const mem = status?.memory;
+  const cpu = status?.cpu;
+  // Use RSS as the main memory metric (heapTotal is just V8 pool, not real usage)
+  const totalMem = mem ? Math.max(mem.rss, mem.heapTotal) : 0;
   const panelCount = [config.cpu, config.memory, config.runtime].filter(Boolean).length;
   return (
     <Card className="flex h-full flex-col">
@@ -614,7 +617,7 @@ function HostBlock({ config }: { config: HostConfig }) {
           <CardTitle>Bot 资源</CardTitle>
           <CardDescription>
             {status
-              ? `运行时间 ${status.uptime ? formatUptime(status.uptime) : '—'} · Node ${typeof process !== 'undefined' ? 'runtime' : 'browser'}${
+              ? `运行时间 ${status.uptime ? formatUptime(status.uptime) : '—'}${
                 resources.status.error ? ' · 更新失败' : ''
               }`
               : resources.status.error ?? '正在采集信息…'}
@@ -625,25 +628,49 @@ function HostBlock({ config }: { config: HostConfig }) {
         </Button>
       </CardHeader>
       <CardContent className={cn('grid flex-1 grid-cols-1 gap-4', HOST_GRID_COLS[panelCount] ?? 'lg:grid-cols-3')}>
+        {/* CPU */}
+        {config.cpu && (
+          <div className="rounded-xl border bg-card/40 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Cpu className="size-4 text-primary" />
+                <span className="text-sm font-semibold">CPU</span>
+              </div>
+              <span className="text-sm font-semibold tabular-nums text-primary">
+                {cpu ? `${cpu.usage.toFixed(1)}%` : '—'}
+              </span>
+            </div>
+            <SkeletonSwap ready={resources.status.ready} reserve={80} lines={2} lineHeight={28} barHeight={9} label="CPU" className="skeleton-swap-fluid min-h-[80px]">
+              {cpu ? (
+                <>
+                  <Progress value={cpu.usage} />
+                  <p className="mt-2 text-meta text-muted-foreground">
+                    {cpu.model} · {cpu.cores} 核
+                  </p>
+                </>
+              ) : null}
+            </SkeletonSwap>
+          </div>
+        )}
         {/* Memory */}
         {config.memory && (
           <div className="rounded-xl border bg-card/40 p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MemoryStick className="size-4 text-primary" />
-                <span className="text-sm font-semibold">内存使用</span>
+                <span className="text-sm font-semibold">内存</span>
               </div>
               <span className="text-sm font-semibold tabular-nums text-primary">
-                {mem ? `${((mem.heapUsed / mem.heapTotal) * 100).toFixed(1)}%` : '—'}
+                {mem ? `${((mem.rss / 1024 / 1024)).toFixed(0)} MB` : '—'}
               </span>
             </div>
             <SkeletonSwap ready={resources.status.ready} reserve={80} lines={2} lineHeight={28} barHeight={9} label="内存" className="skeleton-swap-fluid min-h-[80px]">
               {mem ? (
                 <>
-                  <Progress value={(mem.heapUsed / mem.heapTotal) * 100} />
-                  <p className="mt-2 text-meta text-muted-foreground tabular-nums">
-                    {formatBytes(mem.heapUsed)} / {formatBytes(mem.heapTotal)}
-                  </p>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">RSS (实际占用)</span><span className="tabular-nums">{formatBytes(mem.rss)}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">堆内存</span><span className="tabular-nums">{formatBytes(mem.heapUsed)} / {formatBytes(mem.heapTotal)}</span></div>
+                  </div>
                 </>
               ) : null}
             </SkeletonSwap>
@@ -660,7 +687,7 @@ function HostBlock({ config }: { config: HostConfig }) {
               {status ? (
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Bot</span><span>{status.bot.running ? '运行中' : '离线'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">内存 RSS</span><span>{formatBytes(mem?.rss ?? 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">运行时间</span><span>{formatUptime(status.uptime)}</span></div>
                 </div>
               ) : null}
             </SkeletonSwap>

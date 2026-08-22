@@ -595,6 +595,7 @@ export interface NokoriBotStatusResponse {
   };
   uptime: number;
   memory: { rss: number; heapUsed: number; heapTotal: number };
+  cpu: { model: string; cores: number; usage: number };
   plugins: PluginInfo[];
 }
 

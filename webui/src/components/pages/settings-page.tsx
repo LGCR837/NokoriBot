@@ -71,19 +71,8 @@ const TAB_GROUPS: { title: string; tabs: TabDef[] }[] = [
     ],
   },
   {
-    title: 'SnowLuma',
+    title: '关于',
     tabs: [
-      { key: 'globalConfig', label: '全局配置', icon: SlidersHorizontal },
-      { key: 'storage', label: '存储管理', icon: HardDrive },
-      { key: 'notifications', label: '通知', icon: Bell },
-    ],
-  },
-  {
-    title: '平台',
-    tabs: [
-      { key: 'system', label: '服务', icon: Server },
-      { key: 'advanced', label: '高级', icon: Code2 },
-      { key: 'developer', label: '开发者', icon: Bug },
       { key: 'about', label: '关于', icon: Info },
     ],
   },

@@ -29,8 +29,8 @@ export function ConfigPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.request('/api/config') as BotConfig;
-      setConfig(data);
+      const data = await api.config.get();
+      setConfig(data as unknown as BotConfig);
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载配置失败');
     } finally {
@@ -44,7 +44,7 @@ export function ConfigPage() {
     if (!config) return;
     setSaving(true);
     try {
-      await api.request('/api/config', { method: 'POST', body: JSON.stringify(config) });
+      await api.config.save(config);
       feedback.success({ title: '配置已保存', description: '重启后端以使部分配置生效' });
     } catch (e) {
       feedback.error({ title: '保存失败', description: e instanceof Error ? e.message : '未知错误' });

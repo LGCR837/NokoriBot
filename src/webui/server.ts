@@ -162,6 +162,20 @@ export function createWebServer(opts: WebUiOptions): Express {
     const status = bot.getStatus();
     const mem = process.memoryUsage();
     const plugins = bot.plugins.getAllPlugins();
+    const cpus = require('os').cpus();
+    const cpuModel = cpus[0]?.model ?? 'Unknown';
+    const cpuCores = cpus.length;
+    // Simple CPU usage: compare idle vs total over a short window
+    const cpuTimes = cpus.reduce((acc: any, cpu: any) => {
+      acc.user += cpu.times.user;
+      acc.nice += cpu.times.nice;
+      acc.sys += cpu.times.sys;
+      acc.idle += cpu.times.idle;
+      acc.irq += cpu.times.irq;
+      return acc;
+    }, { user: 0, nice: 0, sys: 0, idle: 0, irq: 0 });
+    const total = cpuTimes.user + cpuTimes.nice + cpuTimes.sys + cpuTimes.idle + cpuTimes.irq;
+    const cpuUsage = total > 0 ? ((total - cpuTimes.idle) / total) * 100 : 0;
     res.json({
       bot: {
         running: status.online || false,
@@ -174,6 +188,7 @@ export function createWebServer(opts: WebUiOptions): Express {
       },
       uptime: status.uptime || 0,
       memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+      cpu: { model: cpuModel, cores: cpuCores, usage: Math.round(cpuUsage * 10) / 10 },
       plugins: Array.isArray(plugins) ? plugins : [],
     });
   });
