@@ -68,7 +68,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
       <div className="flex h-16 shrink-0 items-center px-2">
         <div className="grid w-12 shrink-0 place-items-center">
           <div className="relative flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary/10 ring-1 ring-primary/20">
-            <img src="/favicon.svg" alt="NokoriBot" className="size-7 object-contain" />
+            <img src="/logo.png" alt="NokoriBot" className="size-7 object-contain" />
           </div>
         </div>
         <div className={cn('min-w-0 flex-1 overflow-hidden pr-2 transition-opacity duration-200', collapsed ? 'opacity-0' : 'opacity-100')}>
@@ -76,7 +76,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
             <span className="text-sm font-bold tracking-tight">{APP_NAME}</span>
             <span className="text-micro font-medium text-muted-foreground tabular-nums">v{APP_VERSION}</span>
           </div>
-          <span className="block whitespace-nowrap text-xs text-muted-foreground">OneBot v11 控制台</span>
+          <span className="block whitespace-nowrap text-xs text-muted-foreground">Powered by Aoharu Reverie</span>
         </div>
       </div>
 

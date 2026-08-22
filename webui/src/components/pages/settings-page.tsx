@@ -1466,7 +1466,7 @@ function AboutPanel() {
           >
             <div className="relative">
               <div aria-hidden className="absolute inset-0 -z-10 scale-125 rounded-full bg-primary/20 blur-2xl" />
-              <img src="/favicon.svg" alt="NokoriBot" className="size-20 object-contain drop-shadow-sm" />
+              <img src="/logo.png" alt="NokoriBot" className="size-20 object-contain drop-shadow-sm" />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-semibold tracking-tight">SnowLuma</span>

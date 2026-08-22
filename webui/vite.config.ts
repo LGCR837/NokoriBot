@@ -21,7 +21,7 @@ export default defineConfig({
     },
   },
   define: {
-    __APP_VERSION__: JSON.stringify('3.0.0'),
+    __APP_VERSION__: JSON.stringify('3'),
   },
   build: {
     outDir: 'dist',

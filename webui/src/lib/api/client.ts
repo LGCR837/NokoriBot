@@ -5,13 +5,21 @@ import type {
   NokoriBotFriend,
   NokoriBotGroup,
   PluginInfo,
+  QQInfo,
+  SystemInfo,
+  AccountConnections,
+  UpdateInfo,
+  UiConfig,
+  UiAppearance,
 } from '@/types';
 import {
   type ApiClient,
+  type AgreementsPayload,
   type ChangePasswordResult,
   type CreateApiClientOptions,
   type LoginResult,
   type LogsStreamOptions,
+  type StateStreamOptions,
   type StreamStatus,
   type TokenStore,
   ApiError,
@@ -33,6 +41,9 @@ function extractErrorMessage(payload: ErrorPayload, fallback: string): string {
   return payload.message || payload.error || fallback;
 }
 
+const noopAsync = async () => {};
+const noopFalse = async () => false;
+
 class HttpApiClient implements ApiClient {
   private tokenStore: TokenStore;
   private currentToken: string | null;
@@ -44,6 +55,15 @@ class HttpApiClient implements ApiClient {
   readonly config: ApiClient['config'];
   readonly logs: ApiClient['logs'];
   readonly bot: ApiClient['bot'];
+  readonly agreements: ApiClient['agreements'];
+  readonly totp: ApiClient['totp'];
+  readonly update: ApiClient['update'];
+  readonly ui: ApiClient['ui'];
+  readonly systemSettings: ApiClient['systemSettings'];
+  readonly storage: ApiClient['storage'];
+  readonly notifications: ApiClient['notifications'];
+  readonly globalConfig: ApiClient['globalConfig'];
+  readonly debug: ApiClient['debug'];
 
   constructor(opts: CreateApiClientOptions = {}) {
     this.tokenStore = opts.tokenStore ?? {
@@ -97,6 +117,98 @@ class HttpApiClient implements ApiClient {
       restart: async () => { await this.postJson('/api/bot/restart'); },
       stop: async () => { await this.postJson('/api/stop'); },
     };
+
+    // SL-compat stubs — not wired to backend, just prevent crashes
+    this.agreements = {
+      get: async () => ({ version: '', consentRequired: false, documents: [] }),
+      recordConsent: async () => ({ success: true }),
+    };
+    this.totp = {
+      status: async () => ({ enabled: false as const }),
+      begin: async () => ({ success: false as const, message: 'NokoriBot 不支持 TOTP' }),
+      confirm: async () => ({ success: false as const, message: 'NokoriBot 不支持 TOTP' }),
+      disable: async () => ({ success: true, message: 'NokoriBot 不支持 TOTP' }),
+      regenerateRecoveryCodes: async () => ({ success: false as const, message: 'NokoriBot 不支持 TOTP' }),
+    };
+    this.update = {
+      check: async () => ({
+        current: __APP_VERSION__, latest: null, hasUpdate: false,
+        htmlUrl: null, notes: null, publishedAt: null, checkedAt: Date.now(),
+      }),
+    };
+    this.ui = {
+      get: async () => {
+        try {
+          const res = await this.request('/api/ui');
+          if (!res.ok) return this.defaultUiConfig();
+          const data = await readJson<{ config?: UiConfig }>(res);
+          return data.config ?? this.defaultUiConfig();
+        } catch { return this.defaultUiConfig(); }
+      },
+      save: async (config) => {
+        try {
+          const res = await this.request('/api/ui', { method: 'POST', body: JSON.stringify(config) });
+          const data = await readJson<{ config?: UiConfig }>(res);
+          return data.config ?? { ...this.defaultUiConfig(), ...config };
+        } catch { return { ...this.defaultUiConfig(), ...config }; }
+      },
+      getPublic: async () => {
+        try {
+          const res = await fetch('/api/ui/public');
+          const data = await readJson<{ appearance?: UiAppearance }>(res);
+          return data.appearance ?? this.defaultUiConfig().appearance;
+        } catch { return this.defaultUiConfig().appearance; }
+      },
+      uploadBackground: async () => this.defaultUiConfig(),
+      deleteBackground: async () => this.defaultUiConfig(),
+    };
+    this.systemSettings = {
+      get: async () => ({}),
+      save: async (patch) => patch,
+      uploadCert: noopAsync,
+      deleteCert: noopAsync,
+      exportBackup: async () => ({}),
+      importBackup: async () => ({ success: true }),
+    };
+    this.storage = {
+      get: async () => ({}),
+      saveSettings: async (patch) => patch,
+      cleanup: async () => ({ success: true }),
+    };
+    this.notifications = {
+      getConfig: async () => ({ version: 1, debounceSeconds: 5, channels: [] }),
+      saveConfig: async (c) => c,
+      recent: async () => [],
+      test: async () => ({ success: true, message: 'stub' }),
+    };
+    this.globalConfig = {
+      get: async () => ({ rkey: { fallbackServers: [] }, musicSignUrl: '' }),
+      save: async (c) => c,
+    };
+    this.debug = {
+      actions: async () => ({ actions: [], categories: [] }),
+      invoke: async () => ({ status: 'failed', message: 'NokoriBot 不支持调试工具' }),
+      invokeStream: noopAsync,
+      upload: async () => ({ status: 'failed', message: 'NokoriBot 不支持调试工具' }),
+      stream: () => () => {},
+    };
+  }
+
+  private defaultUiConfig(): UiConfig {
+    return {
+      version: 1,
+      appearance: {
+        mode: 'dark', accentMode: 'preset', accentPreset: 'default', accentCustom: '#0ea5e9',
+        accentScope: 'global', darkIntensity: 'soft', palette: 'default', sidebarStyle: 'follow',
+        background: { type: 'none', color: '', gradient: '', imageOpacity: 1, imageBlur: 0, hasImage: false, imageMime: '', imageVersion: 0 },
+        fontSans: 'default', fontSansCustom: '', fontMono: 'default', fontMonoCustom: '',
+        uiScale: 1, radius: 0.75, density: 'cozy', reduceMotion: false, disableMotion: false,
+        customPointerSystem: false, customContextMenu: false, highContrast: false,
+        sidebarPinned: true, timeFormat: '24h', pollInterval: 3000, customCss: '', cssVars: {},
+      },
+      layout: { overviewBlocks: [], overviewMobile: [], navItems: [], topbarItems: [] },
+      pages: { defaultRoute: '/', logs: { visibleLevels: [], maxLines: 500, autoScroll: true, wrap: false, highlightRules: [], preset: 'ops' }, processesSort: '', configTab: '' },
+    };
   }
 
   // ── Auth ──
@@ -118,9 +230,7 @@ class HttpApiClient implements ApiClient {
     }
   }
 
-  async logout(): Promise<void> {
-    this.setToken(null);
-  }
+  async logout(): Promise<void> { this.setToken(null); }
 
   async status(): Promise<boolean> {
     if (!this.currentToken) return false;
@@ -132,6 +242,8 @@ class HttpApiClient implements ApiClient {
     } catch { return false; }
   }
 
+  async mustChangePassword(): Promise<boolean> { return false; }
+
   async changePassword(_oldPassword: string, newPassword: string): Promise<ChangePasswordResult> {
     try {
       const data = await this.postJson<{ message?: string; error?: string }>('/api/auth/change-password', { newPassword });
@@ -142,11 +254,28 @@ class HttpApiClient implements ApiClient {
     }
   }
 
+  async checkPasswordStrength(): Promise<{ rules: unknown[]; valid: boolean }> {
+    return { rules: [], valid: true };
+  }
+
   // ── Top-level resources ──
 
   async botStatus(): Promise<NokoriBotStatusResponse> {
     return this.getJson<NokoriBotStatusResponse>('/api/status');
   }
+
+  async qqList(): Promise<QQInfo[]> { return []; }
+  async system(): Promise<SystemInfo> {
+    return this.getJson<SystemInfo>('/api/status').catch(() => ({
+      hostname: '', platform: '', arch: '', archLabel: '', release: '', distro: '',
+      uptime: 0, processUptime: 0, nodeVersion: '',
+      cpu: { model: '', cores: 0, speedMHz: 0, loadAvg: [], perCore: [], average: 0 },
+      memory: { total: 0, free: 0, used: 0, usagePercent: 0 },
+      runtime: { pid: 0, rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 },
+    }));
+  }
+  async connections(): Promise<AccountConnections[]> { return []; }
+  stateStream(_options: StateStreamOptions): () => void { return () => {}; }
 
   // ── HTTP helpers ──
 
@@ -156,7 +285,6 @@ class HttpApiClient implements ApiClient {
     };
     if (this.currentToken) headers['Authorization'] = `Bearer ${this.currentToken}`;
     if (init.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-
     const res = await this.fetchWithDeadline(url, { ...init, headers });
     if (res.status === 401) {
       this.setToken(null);
@@ -196,13 +324,8 @@ class HttpApiClient implements ApiClient {
   private getJson<T>(url: string): Promise<T> { return this.fetchJson<T>(url); }
 
   private postJson<T>(url: string, body?: unknown): Promise<T> {
-    return this.fetchJson<T>(url, {
-      method: 'POST',
-      body: body == null ? undefined : JSON.stringify(body),
-    });
+    return this.fetchJson<T>(url, { method: 'POST', body: body == null ? undefined : JSON.stringify(body) });
   }
-
-  // ── Token ──
 
   private setToken(token: string | null): void {
     this.currentToken = token;
