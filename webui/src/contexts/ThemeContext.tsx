@@ -95,8 +95,8 @@ export const UI_SCALE = { min: 0.9, max: 1.2, step: 0.05 } as const;
 export const DEFAULT_APPEARANCE: UiAppearance = {
   mode: 'system',
   accentMode: 'preset',
-  accentPreset: 'sky',
-  accentCustom: '#38bdf8',
+  accentPreset: 'violet',
+  accentCustom: '#8b5cf6',
   accentScope: 'global',
   darkIntensity: 'soft',
   palette: 'default',

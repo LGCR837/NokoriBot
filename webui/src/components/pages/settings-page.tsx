@@ -1250,7 +1250,6 @@ function AccountPanel() {
           onSuccess={() => setPwdSavedAt(Date.now())}
         />
       </Group>
-      <TotpPanel />
     </div>
   );
 }
@@ -1314,7 +1313,7 @@ function DeveloperPanel() {
 
 // ─────────────── 关于 ───────────────
 
-const REPO_URL = 'https://github.com/your-repo/NokoriBot';
+const REPO_URL = 'https://github.com/LGCR837/NokoriBot';
 
 // Best-effort guess of the release asset matching the running platform, so
 // the user knows which file to grab on the GitHub release page. Returns null
@@ -1464,16 +1463,13 @@ function AboutPanel() {
                 v{__APP_VERSION__}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">Powered by Aoharu Reverie</p>
+            <p className="text-sm text-muted-foreground">一个使用 TypeScript 编写的 OldChat 机器人框架</p>
           </motion.div>
           <p className="max-w-md text-[13px] leading-relaxed text-muted-foreground">
-            基于 OneBot v11 协议的 QQ 机器人框架，支持插件系统、好友/群组管理等功能。
+            基于 OneBot v11 协议，支持插件系统、好友/群组管理等功能。
           </p>
         </CardContent>
       </Card>
-
-      {/* software update */}
-      <UpdateGroup />
 
       {/* support + links */}
       <Card className="overflow-hidden">
