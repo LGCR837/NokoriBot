@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Power, PowerOff, Puzzle } from 'lucide-react';
+import { RefreshCw, Power, PowerOff, Puzzle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useApi } from '@/lib/api';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
+import { PluginConfigDialog } from '@/components/plugin-config-dialog';
 import type { PluginInfo } from '@/types';
 
 export function PluginsPage() {
@@ -11,6 +12,7 @@ export function PluginsPage() {
   const { startAction } = useActionFeedback();
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [configPlugin, setConfigPlugin] = useState<string | null>(null);
 
   const loadPlugins = useCallback(async () => {
     setLoading(true);
@@ -95,6 +97,16 @@ export function PluginsPage() {
                     {plugin.enabled ? '已启用' : '已禁用'}
                   </span>
                   <div className="flex gap-1.5">
+                    {plugin.hasConfig && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfigPlugin(plugin.name)}
+                        title="配置"
+                      >
+                        <Settings className="size-3.5" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -121,6 +133,13 @@ export function PluginsPage() {
           ))}
         </div>
       )}
+
+      <PluginConfigDialog
+        open={configPlugin !== null}
+        onClose={() => setConfigPlugin(null)}
+        pluginName={configPlugin ?? ''}
+        onSaved={() => void loadPlugins()}
+      />
     </div>
   );
 }

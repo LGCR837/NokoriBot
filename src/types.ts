@@ -154,6 +154,7 @@ export interface PluginInfo {
   description: string;
   author: string;
   enabled: boolean;
+  hasConfig: boolean;
   main: string;
   loaded: boolean;
   dir: string;

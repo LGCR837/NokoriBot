@@ -68,6 +68,8 @@ export interface ApiClient {
     list(): Promise<PluginInfo[]>;
     toggle(name: string): Promise<boolean>;
     reload(name: string): Promise<void>;
+    getConfig(name: string): Promise<Record<string, unknown>>;
+    saveConfig(name: string, config: Record<string, unknown>): Promise<void>;
   };
   friends: {
     list(): Promise<NokoriBotFriend[]>;

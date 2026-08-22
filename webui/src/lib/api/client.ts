@@ -85,6 +85,13 @@ class HttpApiClient implements ApiClient {
       reload: async (name) => {
         await this.postJson<{ success: boolean }>(`/api/plugins/${encodeURIComponent(name)}/reload`);
       },
+      getConfig: async (name) => {
+        const data = await this.getJson<{ config: Record<string, unknown> }>(`/api/plugins/${encodeURIComponent(name)}/config`);
+        return data.config ?? {};
+      },
+      saveConfig: async (name, config) => {
+        await this.postJson<{ success: boolean }>(`/api/plugins/${encodeURIComponent(name)}/config`, { config });
+      },
     };
 
     this.friends = {

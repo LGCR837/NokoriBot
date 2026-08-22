@@ -203,6 +203,25 @@ export function createWebServer(opts: WebUiOptions): Express {
     }
   });
 
+  apiRouter.get('/plugins/:name/config', requireAuth, (req: Request, res: Response) => {
+    try {
+      const config = bot.plugins.getPluginConfig(req.params.name);
+      res.json({ config });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  apiRouter.post('/plugins/:name/config', requireAuth, (req: Request, res: Response) => {
+    try {
+      const config = req.body?.config ?? {};
+      bot.plugins.savePluginConfig(req.params.name, config);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   // ===== 联系人 =====
 
   apiRouter.get('/friends', requireAuth, async (_req: Request, res: Response) => {
