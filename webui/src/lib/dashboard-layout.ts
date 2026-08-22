@@ -28,24 +28,15 @@ export interface GridWidgetSpec {
 
 /** The five top stat tiles, split out of the legacy single `stats` block. */
 export const STAT_TILE_IDS = [
-  'stat:status', 'stat:accounts', 'stat:processes', 'stat:host', 'stat:uptime',
+  'stat:status', 'stat:accounts', 'stat:processes', 'stat:uptime',
 ] as const;
 
 export const GRID_WIDGETS: GridWidgetSpec[] = [
-  { id: 'stat:status', label: '服务状态', minW: 2, minH: 1, def: { x: 0, y: 0, w: 2, h: 1 } },
-  { id: 'stat:accounts', label: '在线账号', minW: 2, minH: 1, def: { x: 2, y: 0, w: 2, h: 1 } },
-  { id: 'stat:processes', label: '进程注入', minW: 2, minH: 1, def: { x: 4, y: 0, w: 2, h: 1 } },
-  { id: 'stat:host', label: '主机名', minW: 2, minH: 1, def: { x: 6, y: 0, w: 2, h: 1 } },
-  { id: 'stat:uptime', label: '系统运行', minW: 2, minH: 1, def: { x: 8, y: 0, w: 2, h: 1 } },
-  { id: 'connections', label: 'OneBot 连接', minW: 3, minH: 3, def: { x: 0, y: 1, w: 6, h: 4 } },
-  { id: 'alerts', label: '最近告警', minW: 3, minH: 3, def: { x: 6, y: 1, w: 6, h: 4 } },
-  { id: 'host', label: '主机资源', minW: 4, minH: 3, def: { x: 0, y: 5, w: 12, h: 4 } },
-  { id: 'sessions', label: '在线会话', minW: 3, minH: 3, def: { x: 0, y: 9, w: 12, h: 5 } },
-  // Static, opt-in widgets — content lives in block.config, hidden by default.
-  { id: 'note', label: '便签', minW: 2, minH: 2, def: { x: 0, y: 14, w: 4, h: 2 }, defaultVisible: false },
-  { id: 'link', label: '链接卡', minW: 2, minH: 1, def: { x: 4, y: 14, w: 4, h: 1 }, defaultVisible: false },
-  { id: 'account', label: '账号快捷卡', minW: 2, minH: 1, def: { x: 8, y: 14, w: 4, h: 1 }, defaultVisible: false },
-  { id: 'deliveries', label: '最近投递', minW: 3, minH: 3, def: { x: 0, y: 16, w: 6, h: 3 }, defaultVisible: false },
+  { id: 'stat:status', label: 'Bot 状态', minW: 3, minH: 1, def: { x: 0, y: 0, w: 3, h: 1 } },
+  { id: 'stat:accounts', label: '好友数', minW: 3, minH: 1, def: { x: 3, y: 0, w: 3, h: 1 } },
+  { id: 'stat:processes', label: '插件数', minW: 3, minH: 1, def: { x: 6, y: 0, w: 3, h: 1 } },
+  { id: 'stat:uptime', label: 'Bot 运行', minW: 3, minH: 1, def: { x: 9, y: 0, w: 3, h: 1 } },
+  { id: 'host', label: '主机资源', minW: 6, minH: 3, def: { x: 0, y: 1, w: 12, h: 4 } },
 ];
 
 /** Widgets hidden on first sight (opt-in) — derived from the catalogue's

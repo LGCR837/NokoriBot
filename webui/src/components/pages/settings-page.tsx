@@ -1324,7 +1324,7 @@ function DeveloperPanel() {
 
 // ─────────────── 关于 ───────────────
 
-const REPO_URL = 'https://github.com/SnowLuma/SnowLuma';
+const REPO_URL = 'https://github.com/your-repo/NokoriBot';
 
 // Best-effort guess of the release asset matching the running platform, so
 // the user knows which file to grab on the GitHub release page. Returns null
@@ -1469,15 +1469,15 @@ function AboutPanel() {
               <img src="/logo.png" alt="NokoriBot" className="size-20 object-contain drop-shadow-sm" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-semibold tracking-tight">SnowLuma</span>
+              <span className="text-2xl font-semibold tracking-tight">NokoriBot</span>
               <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-meta text-primary tabular-nums">
                 v{__APP_VERSION__}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">Next Remote Protocol Framework · 下一代远程协议框架</p>
+            <p className="text-sm text-muted-foreground">Powered by Aoharu Reverie</p>
           </motion.div>
           <p className="max-w-md text-[13px] leading-relaxed text-muted-foreground">
-            以轻量注入驱动 QQ NT，对外提供标准 OneBot v11 接口，让机器人一次部署、长期稳定运行。
+            基于 OneBot v11 协议的 QQ 机器人框架，支持插件系统、好友/群组管理等功能。
           </p>
         </CardContent>
       </Card>
@@ -1490,9 +1490,9 @@ function AboutPanel() {
         <CardContent className="flex flex-col items-center gap-4 px-6 py-7 text-center">
           <Star className="size-7 fill-primary/15 text-primary" />
           <div className="flex flex-col items-center gap-1">
-            <p className="text-sm font-medium">喜欢 SnowLuma？给个 Star 支持一下</p>
+            <p className="text-sm font-medium">喜欢 NokoriBot？给个 Star 支持一下</p>
             <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-              开源不易，你的 ⭐ 是我们持续维护的最大动力。
+              开源不易，你的 ⭐ 是持续维护的最大动力。
             </p>
           </div>
           <Button asChild className="w-full max-w-xs">

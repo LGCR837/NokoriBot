@@ -547,80 +547,50 @@ function StatTile({
 }
 
 function StatTileWidget({ id }: { id: string }) {
-  const { qqList, processList, systemInfo, resources } = useAppState();
-  const { status } = useSession();
-  const online = status === '已连接';
+  const { plugins, status, resources } = useAppState();
+  const { status: sessionStatus } = useSession();
+  const online = sessionStatus === '已连接';
 
   switch (id) {
     case 'stat:status':
       return (
         <StatTile
           icon={<Activity className="size-5" />}
-          label="服务状态"
-          value={online ? '运行中' : status}
-          subtext={online ? '已连接到后端' : '请检查后端进程'}
-          accent={online}
+          label="Bot 状态"
+          value={status?.bot?.running ? '运行中' : online ? '已连接' : '离线'}
+          subtext={status?.bot?.username ? `${status.bot.username} (${status.bot.myUid})` : '未登录'}
+          accent={status?.bot?.running}
         />
       );
     case 'stat:accounts':
       return (
         <StatTile
           icon={<Users className="size-5" />}
-          label="在线账号"
-          ready={resources.qqList.ready}
-          value={resources.qqList.error && qqList.length === 0 ? '—' : qqList.length}
-          subtext={resources.qqList.error
-            ? qqList.length > 0 ? '更新失败，显示上次数据' : '加载失败'
-            : `已接入 ${qqList.length} 个会话`}
+          label="好友数"
+          ready={resources.plugins.ready}
+          value={plugins.length}
+          subtext={`${plugins.length} 个插件已加载`}
         />
       );
-    case 'stat:processes': {
-      const onlineProcs = processList.filter((p) => p.status === 'online').length;
-      const loadableProcs = processList.filter((p) => !p.injected).length;
+    case 'stat:processes':
       return (
         <StatTile
           icon={<PlugZap className="size-5" />}
-          label="进程注入"
-          ready={resources.processList.ready}
-          value={resources.processList.error && processList.length === 0 ? '—' : `${onlineProcs} 在线`}
-          subtext={resources.processList.error
-            ? processList.length > 0 ? '更新失败，显示上次数据' : '加载失败'
-            : `${processList.length} 进程 · ${loadableProcs} 可注入`}
-          to="/processes"
+          label="插件数"
+          ready={resources.plugins.ready}
+          value={plugins.filter(p => p.enabled).length}
+          subtext={`${plugins.filter(p => p.enabled).length} 已启用 / ${plugins.length} 总计`}
         />
       );
-    }
-    case 'stat:host': {
-      const value = systemInfo?.hostname ?? '—';
-      const subtext = systemInfo
-        ? `${shortDistro(systemInfo.distro)} · ${systemInfo.archLabel}`
-        : resources.systemInfo.error ? '加载失败' : '加载中';
-      return (
-        <StatTile
-          icon={<Server className="size-5" />}
-          label="主机名"
-          ready={resources.systemInfo.ready}
-          value={value}
-          subtext={subtext}
-          details={systemInfo
-            ? `主机名：${systemInfo.hostname}\n系统：${systemInfo.distro} · ${systemInfo.archLabel}`
-            : undefined}
-        />
-      );
-    }
     case 'stat:uptime': {
-      const systemUptime = systemInfo ? formatUptime(systemInfo.uptime) : '—';
-      const processUptime = systemInfo ? formatUptime(systemInfo.processUptime) : undefined;
+      const uptime = status?.uptime ? formatUptime(status.uptime) : '—';
       return (
         <StatTile
           icon={<MonitorCog className="size-5" />}
-          label="系统运行"
-          ready={resources.systemInfo.ready}
-          value={systemUptime}
-          subtext={processUptime ? `进程 ${processUptime}` : undefined}
-          details={processUptime
-            ? `系统运行：${systemUptime}\nSnowLuma 进程：${processUptime}`
-            : undefined}
+          label="Bot 运行"
+          ready={resources.status.ready}
+          value={uptime}
+          subtext={status?.memory ? `内存 ${(status.memory.heapUsed / 1024 / 1024).toFixed(0)} MB` : undefined}
         />
       );
     }
@@ -634,87 +604,27 @@ function StatTileWidget({ id }: { id: string }) {
 const HOST_GRID_COLS: Record<number, string> = { 1: 'lg:grid-cols-1', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3' };
 
 function HostBlock({ config }: { config: HostConfig }) {
-  const { systemInfo, refreshSystem, resources } = useAppState();
+  const { status, refreshStatus, resources } = useAppState();
+  const mem = status?.memory;
   const panelCount = [config.cpu, config.memory, config.runtime].filter(Boolean).length;
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
         <div>
-          <CardTitle>主机资源</CardTitle>
+          <CardTitle>Bot 资源</CardTitle>
           <CardDescription>
-            {systemInfo
-              ? `${systemInfo.cpu.model.trim()} · ${systemInfo.cpu.cores} 核 · Node ${systemInfo.nodeVersion}${
-                resources.systemInfo.error ? ' · 更新失败，显示上次数据' : ''
+            {status
+              ? `运行时间 ${status.uptime ? formatUptime(status.uptime) : '—'} · Node ${typeof process !== 'undefined' ? 'runtime' : 'browser'}${
+                resources.status.error ? ' · 更新失败' : ''
               }`
-              : resources.systemInfo.error ?? '正在采集主机信息…'}
+              : resources.status.error ?? '正在采集信息…'}
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" onClick={refreshSystem}>
+        <Button variant="outline" size="sm" onClick={refreshStatus}>
           <RefreshCw className="size-3.5" /> 刷新
         </Button>
       </CardHeader>
       <CardContent className={cn('grid flex-1 grid-cols-1 gap-4', HOST_GRID_COLS[panelCount] ?? 'lg:grid-cols-3')}>
-        {/* CPU */}
-        {config.cpu && (
-          <div className="rounded-xl border bg-card/40 p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Cpu className="size-4 text-primary" />
-                <span className="text-sm font-semibold">CPU 使用率</span>
-                {systemInfo && (
-                  <span className="text-meta text-muted-foreground tabular-nums">{systemInfo.cpu.perCore.length} 核</span>
-                )}
-              </div>
-              <span className="text-sm font-semibold tabular-nums text-primary">
-                {systemInfo ? `${systemInfo.cpu.average.toFixed(1)}%` : '—'}
-              </span>
-            </div>
-            <SkeletonSwap
-              ready={resources.systemInfo.ready}
-              reserve={112}
-              lines={4}
-              lineHeight={28}
-              barHeight={9}
-              label="CPU 使用率"
-              className="skeleton-swap-fluid min-h-[112px]"
-            >
-              {systemInfo ? (
-                <>
-                  <Progress value={systemInfo.cpu.average} />
-                  <p className="mt-2 text-meta text-muted-foreground tabular-nums">
-                    负载: {systemInfo.cpu.loadAvg.map((v) => v.toFixed(2)).join(' / ')}
-                  </p>
-                  {systemInfo.cpu.perCore.length > 0 && (
-                    <div
-                      className="mt-3 grid"
-                      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(34px, 1fr))', gap: 3 }}
-                    >
-                      {systemInfo.cpu.perCore.map((p, i) => (
-                        <div
-                          key={i}
-                          title={`Core ${i}: ${p.toFixed(1)}%`}
-                          className="grid aspect-square place-items-center rounded-md transition-[background] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                          style={{
-                            background: `color-mix(in oklab, var(--primary) ${Math.min(100, Math.max(0, p)).toFixed(1)}%, color-mix(in oklab, var(--muted) 80%, transparent))`,
-                          }}
-                        >
-                          <span
-                            className="text-micro leading-none tabular-nums"
-                            style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-                          >
-                            {i}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : resources.systemInfo.error ? (
-                <p role="alert" className="text-xs text-destructive">{resources.systemInfo.error}</p>
-              ) : null}
-            </SkeletonSwap>
-          </div>
-        )}
         {/* Memory */}
         {config.memory && (
           <div className="rounded-xl border bg-card/40 p-4">
@@ -724,52 +634,17 @@ function HostBlock({ config }: { config: HostConfig }) {
                 <span className="text-sm font-semibold">内存使用</span>
               </div>
               <span className="text-sm font-semibold tabular-nums text-primary">
-                {systemInfo ? `${systemInfo.memory.usagePercent.toFixed(1)}%` : '—'}
+                {mem ? `${((mem.heapUsed / mem.heapTotal) * 100).toFixed(1)}%` : '—'}
               </span>
             </div>
-            <SkeletonSwap
-              ready={resources.systemInfo.ready}
-              reserve={72}
-              lines={3}
-              lineHeight={24}
-              barHeight={9}
-              label="内存使用"
-              className="skeleton-swap-fluid min-h-[72px]"
-            >
-              {systemInfo ? (() => {
-                const m = systemInfo.memory;
-                const rss = Math.min(systemInfo.runtime.rss, m.used);
-                const other = Math.max(0, m.used - rss);
-                const segs = [
-                  { key: 'proc', label: '本进程', bytes: rss, grow: (rss / m.total) * 100, color: 'var(--primary)' },
-                  { key: 'other', label: '其他已用', bytes: other, grow: (other / m.total) * 100, color: 'color-mix(in oklab, var(--primary) 45%, transparent)' },
-                  { key: 'free', label: '空闲', bytes: m.free, grow: (m.free / m.total) * 100, color: 'color-mix(in oklab, var(--muted) 85%, transparent)' },
-                ];
-                return (
-                  <>
-                    <div className="mt-1.5 flex h-3 gap-0.5">
-                      {segs.map((seg) => (
-                        <span
-                          key={seg.key}
-                          className="rounded-[3px]"
-                          style={{ flexGrow: seg.grow, minWidth: 2, background: seg.color }}
-                          title={`${seg.label} ${formatBytes(seg.bytes)}`}
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1 text-meta text-muted-foreground">
-                      {segs.map((seg) => (
-                        <span key={seg.key} className="inline-flex items-center gap-1.5">
-                          <i className="size-2 rounded-[2px]" style={{ background: seg.color }} />
-                          {seg.label}
-                          <b className="font-semibold text-foreground tabular-nums">{formatBytes(seg.bytes)}</b>
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                );
-              })() : resources.systemInfo.error ? (
-                <p role="alert" className="text-xs text-destructive">{resources.systemInfo.error}</p>
+            <SkeletonSwap ready={resources.status.ready} reserve={80} lines={2} lineHeight={28} barHeight={9} label="内存" className="skeleton-swap-fluid min-h-[80px]">
+              {mem ? (
+                <>
+                  <Progress value={(mem.heapUsed / mem.heapTotal) * 100} />
+                  <p className="mt-2 text-meta text-muted-foreground tabular-nums">
+                    {formatBytes(mem.heapUsed)} / {formatBytes(mem.heapTotal)}
+                  </p>
+                </>
               ) : null}
             </SkeletonSwap>
           </div>
@@ -777,43 +652,16 @@ function HostBlock({ config }: { config: HostConfig }) {
         {/* Runtime */}
         {config.runtime && (
           <div className="rounded-xl border bg-card/40 p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Server className="size-4 text-primary" />
-                <span className="text-sm font-semibold">运行进程</span>
-              </div>
-              <span className="text-sm font-semibold tabular-nums text-primary">
-                {systemInfo ? `PID ${systemInfo.runtime.pid}` : '—'}
-              </span>
+            <div className="mb-2 flex items-center gap-2">
+              <Server className="size-4 text-primary" />
+              <span className="text-sm font-semibold">运行时</span>
             </div>
-            <SkeletonSwap
-              ready={resources.systemInfo.ready}
-              reserve={88}
-              lines={3}
-              lineHeight={29}
-              barHeight={9}
-              label="运行进程"
-              className={resources.systemInfo.ready ? 'skeleton-swap-fluid min-h-[88px]' : ''}
-            >
-              {systemInfo ? (
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between rounded-md bg-background/60 px-2 py-1.5">
-                    <span className="text-muted-foreground">RSS</span>
-                    <span className="font-medium tabular-nums">{formatBytes(systemInfo.runtime.rss)}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-md bg-background/60 px-2 py-1.5">
-                    <span className="text-muted-foreground">堆内存</span>
-                    <span className="font-medium tabular-nums">
-                      {formatBytes(systemInfo.runtime.heapUsed)} / {formatBytes(systemInfo.runtime.heapTotal)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-md bg-background/60 px-2 py-1.5">
-                    <span className="text-muted-foreground">外部内存</span>
-                    <span className="font-medium tabular-nums">{formatBytes(systemInfo.runtime.external)}</span>
-                  </div>
+            <SkeletonSwap ready={resources.status.ready} reserve={60} lines={2} lineHeight={28} barHeight={9} label="运行时" className="skeleton-swap-fluid min-h-[60px]">
+              {status ? (
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Bot</span><span>{status.bot.running ? '运行中' : '离线'}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">内存 RSS</span><span>{formatBytes(mem?.rss ?? 0)}</span></div>
                 </div>
-              ) : resources.systemInfo.error ? (
-                <p role="alert" className="text-xs text-destructive">{resources.systemInfo.error}</p>
               ) : null}
             </SkeletonSwap>
           </div>
@@ -821,266 +669,6 @@ function HostBlock({ config }: { config: HostConfig }) {
       </CardContent>
     </Card>
   );
-}
-
-// ─────────────── online sessions ───────────────
-
-function SessionsBlock({ config }: { config: SessionsConfig }) {
-  const { qqList, resources } = useAppState();
-  const off = useTheme().appearance.disableMotion;
-  const list = useMemo(() => {
-    const f = config.filter.trim().toLowerCase();
-    let arr = f
-      ? qqList.filter((q) => (q.nickname ?? '').toLowerCase().includes(f) || q.uin.includes(f))
-      : qqList;
-    if (config.sort === 'uin') arr = [...arr].sort((a, b) => a.uin.localeCompare(b.uin, undefined, { numeric: true }));
-    else if (config.sort === 'nickname') arr = [...arr].sort((a, b) => (a.nickname ?? '').localeCompare(b.nickname ?? ''));
-    // 'recent' keeps the server/insertion order.
-    return arr;
-  }, [qqList, config.sort, config.filter]);
-
-  return (
-    <Card className="flex h-full flex-col">
-      <CardHeader>
-        <CardTitle>在线会话</CardTitle>
-        <CardDescription>
-          当前已接入并完成登录的 QQ 账号{config.filter.trim() ? `（筛选：${config.filter.trim()}）` : ''}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1">
-        <SkeletonSwap
-          ready={resources.qqList.ready}
-          reserve={120}
-          lines={5}
-          lineHeight={24}
-          barHeight={9}
-          label="在线会话"
-          className={resources.qqList.ready ? 'skeleton-swap-fluid min-h-[120px]' : ''}
-        >
-          {resources.qqList.ready ? (
-            resources.qqList.error && qqList.length === 0 ? (
-              <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-8 text-center text-sm text-destructive">
-                {resources.qqList.error}
-              </p>
-            ) : list.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-muted-foreground">
-                <Users className="size-8 opacity-40" strokeWidth={1.5} />
-                <p className="text-sm">{qqList.length === 0 ? '暂无在线会话' : '无匹配的会话'}</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {resources.qqList.error && (
-                  <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                    {resources.qqList.error}；当前显示上次成功读取的在线会话。
-                  </p>
-                )}
-                <ScrollArea className="h-full" viewportClassName="[&>div]:!block">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    {list.map((q, idx) => (
-                      <motion.div
-                        key={q.uin}
-                        initial={off ? false : { opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={off ? { duration: 0 } : { delay: 0.03 + idx * 0.04, duration: 0.22 }}
-                        whileHover={off ? undefined : { y: -2 }}
-                        className="flex items-center gap-3 rounded-xl border bg-card/40 p-3"
-                      >
-                        <Avatar size={40}>
-                          <AvatarImage src={qqAvatarUrl(q.uin)} alt={q.nickname || q.uin} />
-                          <AvatarFallback>{(q.nickname || q.uin).slice(0, 2)}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold">{q.nickname}</div>
-                          <div className="truncate font-mono text-meta text-muted-foreground tabular-nums">{q.uin}</div>
-                        </div>
-                        <span className="size-2 shrink-0 animate-pulse rounded-full bg-success shadow-[0_0_8px_color-mix(in_oklab,var(--success)_60%,transparent)]" />
-                      </motion.div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )
-          ) : null}
-        </SkeletonSwap>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─────────────── connection health ───────────────
-
-const CONN_STATUS_STYLE: Record<AdapterStatusLevel, string> = {
-  ok: 'bg-success/10 text-success',
-  warn: 'bg-warning/10 text-warning',
-  down: 'bg-destructive/10 text-destructive',
-  degraded: 'bg-destructive/10 text-destructive',
-  disabled: 'bg-muted text-muted-foreground',
-};
-const CONN_STATUS_LABEL: Record<AdapterStatusLevel, string> = {
-  ok: '正常', warn: '注意', down: '异常', degraded: '应用失败', disabled: '未启用',
-};
-const ADAPTER_KIND_LABEL: Record<AdapterStatus['kind'], string> = {
-  httpServer: 'HTTP 服务端', httpClient: 'HTTP 上报', wsServer: 'WS 服务端', wsClient: 'WS 客户端',
-};
-
-// Worst-status-first ordering (down → warn → disabled → ok).
-const CONN_STATUS_RANK: Record<AdapterStatusLevel, number> = {
-  degraded: 0,
-  down: 1,
-  warn: 2,
-  disabled: 3,
-  ok: 4,
-};
-
-function ConnectionsBlock({ config }: { config: ConnectionsConfig }) {
-  const { connections, resources } = useAppState();
-  const list = useMemo(() => {
-    const f = config.filter.trim().toLowerCase();
-    // Optionally drop healthy adapters, then accounts left with none.
-    let arr = connections.map((acc) => ({
-      ...acc,
-      adapters: config.onlyIssues ? acc.adapters.filter((a) => a.status !== 'ok') : acc.adapters,
-    }));
-    if (config.onlyIssues) arr = arr.filter((acc) => acc.adapters.length > 0);
-    if (f) arr = arr.filter((acc) => (acc.nickname ?? '').toLowerCase().includes(f) || acc.uin.includes(f));
-    if (config.sort === 'name') {
-      arr = [...arr].sort((a, b) => (a.nickname || a.uin).localeCompare(b.nickname || b.uin));
-    } else if (config.sort === 'status') {
-      const worst = (acc: typeof arr[number]) =>
-        acc.adapters.reduce((m, a) => Math.min(m, CONN_STATUS_RANK[a.status]), 99);
-      arr = [...arr].sort((a, b) => worst(a) - worst(b));
-    }
-    return arr;
-  }, [connections, config.filter, config.onlyIssues, config.sort]);
-
-  const filtered = config.filter.trim() !== '' || config.onlyIssues;
-  return (
-    <Card className="flex h-full flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Cable className="size-4 text-primary" /> OneBot 连接
-        </CardTitle>
-        <CardDescription>
-          各账号协议端点的实时连接状态{config.onlyIssues ? ' · 仅异常' : ''}{config.filter.trim() ? ` · 筛选：${config.filter.trim()}` : ''}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 overflow-auto">
-        <SkeletonSwap
-          ready={resources.connections.ready}
-          reserve={120}
-          lines={5}
-          lineHeight={24}
-          barHeight={9}
-          label="OneBot 连接"
-          className={resources.connections.ready ? 'skeleton-swap-fluid min-h-[120px]' : ''}
-        >
-          {resources.connections.ready ? (
-            resources.connections.error && connections.length === 0 ? (
-              <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-8 text-center text-sm text-destructive">
-                {resources.connections.error}
-              </p>
-            ) : list.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-muted-foreground">
-                <Cable className="size-8 opacity-40" strokeWidth={1.5} />
-                <p className="text-sm">{filtered ? '无匹配的连接' : '暂无已接入的账号实例'}</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {resources.connections.error && (
-                  <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                    {resources.connections.error}；当前显示上次成功读取的连接状态。
-                  </p>
-                )}
-                {list.map((acc) => (
-                  <div key={acc.uin} className="flex flex-col gap-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold">{acc.nickname || acc.uin}</span>
-                      <span className="font-mono text-meta text-muted-foreground tabular-nums">{acc.uin}</span>
-                    </div>
-                    {acc.databaseMigration && acc.databaseMigration.phase !== 'complete' && (
-                      <DatabaseMigrationProgress migration={acc.databaseMigration} />
-                    )}
-                    {acc.adapters.length > 0 ? (
-                      <div className="flex flex-col gap-1.5">
-                        {acc.adapters.map((adp) => (
-                          <div key={adp.name} className="flex items-center gap-2 rounded-xl border bg-card/40 px-3 py-2">
-                            <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-micro font-medium', CONN_STATUS_STYLE[adp.status])}>
-                              {CONN_STATUS_LABEL[adp.status]}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="truncate text-sm font-medium">{adp.name}</span>
-                                <span className="shrink-0 text-micro text-muted-foreground">{ADAPTER_KIND_LABEL[adp.kind]}</span>
-                              </div>
-                              <div className="truncate text-meta text-muted-foreground">{adp.detail}</div>
-                              {adp.lastError && adp.lastErrorAt && (
-                                <div className="truncate text-xs text-destructive/80">
-                                  {new Date(adp.lastErrorAt).toLocaleString()} · {adp.lastError}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : acc.databaseMigration?.usable !== false ? (
-                      <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">未配置任何协议端点</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )
-          ) : null}
-        </SkeletonSwap>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DatabaseMigrationProgress({ migration }: { migration: AccountDatabaseMigration }) {
-  const percentage = migration.progress === null
-    ? null
-    : Math.round(migration.progress * 100);
-  const title = migration.phase === 'preparing'
-    ? '正在准备数据库，账号暂不可用'
-    : migration.phase === 'failed'
-      ? (migration.usable ? '历史数据迁移失败，账号功能可用' : '数据库准备失败，账号暂不可用')
-      : '正在后台迁移历史数据，账号功能可用';
-  const eta = formatMigrationEta(migration.estimatedRemainingSeconds);
-
-  return (
-    <div className={cn(
-      'rounded-xl border px-3 py-2.5',
-      migration.phase === 'failed'
-        ? 'border-destructive/25 bg-destructive/5'
-        : 'border-warning/25 bg-warning/5',
-    )}>
-      <div className="flex items-center justify-between gap-3 text-xs">
-        <span className="font-medium">{title}</span>
-        {percentage !== null && <span className="tabular-nums">{percentage}%</span>}
-      </div>
-      {percentage !== null && <Progress className="mt-2 h-1.5" value={percentage} />}
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-meta text-muted-foreground">
-        {migration.total !== null && (
-          <span className="tabular-nums">
-            已处理 {migration.processed.toLocaleString()} / {migration.total.toLocaleString()} 条
-          </span>
-        )}
-        {migration.phase !== 'failed' && <span>{eta}</span>}
-        {migration.phase === 'failed' && migration.error && <span>{migration.error}</span>}
-      </div>
-    </div>
-  );
-}
-
-function formatMigrationEta(seconds: number | null): string {
-  if (seconds === null) return '剩余时间估算中';
-  if (seconds <= 0) return '即将完成';
-  if (seconds < 60) return `预计剩余 ${seconds} 秒`;
-  const minutes = Math.ceil(seconds / 60);
-  if (minutes < 60) return `预计剩余 ${minutes} 分钟`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return `预计剩余 ${hours} 小时${remainder > 0 ? ` ${remainder} 分钟` : ''}`;
 }
 
 // ─────────────── static widgets (note / link / account) ───────────────
