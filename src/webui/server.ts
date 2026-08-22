@@ -368,6 +368,70 @@ export function createWebServer(opts: WebUiOptions): Express {
   // ===== 挂载 API 路由 =====
   app.use('/api', apiRouter);
 
+  // ===== UI 配置 stub（前端 ThemeContext 需要） =====
+  const defaultAppearance = {
+    mode: 'dark', accentMode: 'preset', accentPreset: 'default', accentCustom: '#0ea5e9',
+    accentScope: 'global', darkIntensity: 'soft', palette: 'default', sidebarStyle: 'follow',
+    background: { type: 'none', color: '', gradient: '', imageOpacity: 1, imageBlur: 0, hasImage: false, imageMime: '', imageVersion: 0 },
+    fontSans: 'default', fontSansCustom: '', fontMono: 'default', fontMonoCustom: '',
+    uiScale: 1, radius: 0.75, density: 'cozy', reduceMotion: false, disableMotion: false,
+    customPointerSystem: false, customContextMenu: false, highContrast: false,
+    sidebarPinned: true, timeFormat: '24h', pollInterval: 3000, customCss: '', cssVars: {},
+  };
+  const defaultLayout = {
+    overviewBlocks: [], overviewMobile: [],
+    navItems: [], topbarItems: [],
+  };
+  const defaultPages = { defaultRoute: '/', logs: { visibleLevels: ['info','warn','error'], maxLines: 500, autoScroll: true, wrap: false, highlightRules: [], preset: 'ops' as const }, processesSort: '', configTab: '' };
+  const defaultUiConfig = { version: 1, appearance: defaultAppearance, layout: defaultLayout, pages: defaultPages };
+
+  // 持久化 UI 配置到 config.json
+  function getUiConfig(): typeof defaultUiConfig {
+    try {
+      const stored = (config.getAll() as any).uiConfig;
+      if (stored && typeof stored === 'object') {
+        return {
+          version: stored.version ?? 1,
+          appearance: { ...defaultAppearance, ...(stored.appearance || {}) },
+          layout: { ...defaultLayout, ...(stored.layout || {}) },
+          pages: { ...defaultPages, ...(stored.pages || {}) },
+        };
+      }
+    } catch { /* */ }
+    return defaultUiConfig;
+  }
+
+  apiRouter.get('/ui', requireAuth, (_req: Request, res: Response) => {
+    res.json({ config: getUiConfig() });
+  });
+
+  apiRouter.post('/ui', requireAuth, (req: Request, res: Response) => {
+    const incoming = req.body || {};
+    const current = getUiConfig();
+    const merged = {
+      version: current.version,
+      appearance: { ...current.appearance, ...(incoming.appearance || {}) },
+      layout: { ...current.layout, ...(incoming.layout || {}) },
+      pages: { ...current.pages, ...(incoming.pages || {}) },
+    };
+    config.update({ uiConfig: merged } as any);
+    res.json({ config: merged });
+  });
+
+  apiRouter.get('/ui/public', (_req: Request, res: Response) => {
+    const cfg = getUiConfig();
+    const { customCss: _, ...appearance } = cfg.appearance;
+    res.json({ appearance });
+  });
+
+  apiRouter.post('/ui/background', requireAuth, (req: Request, res: Response) => {
+    res.json({ config: getUiConfig() });
+  });
+
+  apiRouter.delete('/ui/background', requireAuth, (_req: Request, res: Response) => {
+    res.json({ config: getUiConfig() });
+  });
+
   // ===== 静态文件 + SPA Fallback =====
   const publicDir = WEBUI_PUBLIC_DIR;
   if (fs.existsSync(publicDir)) {
