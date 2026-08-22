@@ -59,7 +59,7 @@ export function ConfigPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="flex min-h-full flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">NokoriBot 配置</h1>
