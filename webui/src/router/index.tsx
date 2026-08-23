@@ -63,6 +63,15 @@ const configRoute = createRoute({
   ),
 });
 
+const marketplaceRoute = createRoute({
+  path: '/marketplace',
+  getParentRoute: () => appLayoutRoute,
+  component: lazyRouteComponent(
+    () => import('@/components/pages/marketplace-page'),
+    'MarketplacePage',
+  ),
+});
+
 export const SETTINGS_TABS = ['appearance', 'data', 'advanced', 'account', 'system', 'storage', 'notifications', 'globalConfig', 'developer', 'about'] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
@@ -82,7 +91,7 @@ export const settingsRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  appLayoutRoute.addChildren([overviewRoute, pluginsRoute, contactsRoute, logsRoute, configRoute, settingsRoute]),
+  appLayoutRoute.addChildren([overviewRoute, pluginsRoute, contactsRoute, logsRoute, configRoute, marketplaceRoute, settingsRoute]),
 ]);
 
 export const appRouter = createRouter({
@@ -98,4 +107,4 @@ declare module '@tanstack/react-router' {
   }
 }
 
-export type AppPath = '/' | '/plugins' | '/contacts' | '/logs' | '/config' | '/settings' | '/processes' | '/debug';
+export type AppPath = '/' | '/plugins' | '/contacts' | '/logs' | '/config' | '/marketplace' | '/settings' | '/processes' | '/debug';

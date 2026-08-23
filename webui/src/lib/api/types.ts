@@ -2,6 +2,7 @@ import type {
   LogEntry,
   LogLevel,
   PluginInfo,
+  MarketplacePlugin,
   NokoriBotStatusResponse,
   NokoriBotFriend,
   NokoriBotGroup,
@@ -151,6 +152,10 @@ export interface ApiClient {
     invokeStream(uin: string, action: string, params: Record<string, unknown>, onFrame: (frame: unknown) => void, signal?: AbortSignal): Promise<void>;
     upload(file: File, opts?: Record<string, unknown>): Promise<unknown>;
     stream(onMessage: (m: unknown) => void, onStatus?: (s: StreamStatus) => void): () => void;
+  };
+  marketplace: {
+    list(): Promise<MarketplacePlugin[]>;
+    install(name: string): Promise<{ success: boolean; name?: string; version?: string; error?: string }>;
   };
 
   request(url: string, init?: RequestInit): Promise<Response>;

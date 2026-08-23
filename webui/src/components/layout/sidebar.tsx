@@ -1,4 +1,4 @@
-import { Bug, Check, Eye, EyeOff, GripVertical, LayoutDashboard, Lock, Pin, PinOff, Plug, PlugZap, Settings, Sparkles, SlidersHorizontal, Terminal, Users } from 'lucide-react';
+import { Bug, Check, Eye, EyeOff, GripVertical, LayoutDashboard, Lock, Pin, PinOff, Plug, PlugZap, Settings, Sparkles, SlidersHorizontal, Store, Terminal, Users } from 'lucide-react';
 import { motion, Reorder } from 'motion/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +20,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: '总览', icon: LayoutDashboard, description: 'Bot 状态概览' },
   { to: '/plugins', label: '插件管理', icon: Plug, description: '启用 / 禁用插件' },
+  { to: '/marketplace', label: '插件广场', icon: Store, description: '浏览和安装社区插件' },
   { to: '/contacts', label: '联系人', icon: Users, description: '好友与群组' },
   { to: '/logs', label: '日志', icon: Terminal, description: '实时事件流' },
   { to: '/config', label: '配置', icon: Settings, description: 'Bot 参数配置' },

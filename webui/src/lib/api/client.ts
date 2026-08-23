@@ -5,6 +5,7 @@ import type {
   NokoriBotFriend,
   NokoriBotGroup,
   PluginInfo,
+  MarketplacePlugin,
   QQInfo,
   SystemInfo,
   AccountConnections,
@@ -64,6 +65,7 @@ class HttpApiClient implements ApiClient {
   readonly notifications: ApiClient['notifications'];
   readonly globalConfig: ApiClient['globalConfig'];
   readonly debug: ApiClient['debug'];
+  readonly marketplace: ApiClient['marketplace'];
 
   constructor(opts: CreateApiClientOptions = {}) {
     this.tokenStore = opts.tokenStore ?? {
@@ -199,6 +201,15 @@ class HttpApiClient implements ApiClient {
       invokeStream: noopAsync,
       upload: async () => ({ status: 'failed', message: 'NokoriBot 不支持调试工具' }),
       stream: () => () => {},
+    };
+    this.marketplace = {
+      list: async () => {
+        const data = await this.getJson<{ plugins?: MarketplacePlugin[] } | MarketplacePlugin[]>('/api/marketplace/plugins');
+        return Array.isArray(data) ? data : ((data as any).plugins ?? []);
+      },
+      install: async (name) => {
+        return this.postJson<{ success: boolean; name?: string; version?: string; error?: string }>('/api/marketplace/install', { name });
+      },
     };
   }
 

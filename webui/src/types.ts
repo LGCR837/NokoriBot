@@ -619,3 +619,15 @@ export interface NokoriBotGroup {
   name: string;
   member_count?: number;
 }
+
+export interface MarketplacePlugin {
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  filename: string;
+  size: number;
+  downloads: number;
+  uploaded_by: string;
+  uploaded_at: string;
+}

@@ -319,6 +319,101 @@ export function createWebServer(opts: WebUiOptions): Express {
     }
   });
 
+  // ===== 插件广场 =====
+
+  const MARKETPLACE_URL = 'https://ii.reverie.dpdns.org/nokorimarketplace';
+
+  apiRouter.get('/marketplace/plugins', requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const resp = await fetch(`${MARKETPLACE_URL}/api.php?action=plugins`);
+      const data = await resp.json();
+      res.json(data);
+    } catch (e: any) {
+      res.status(502).json({ error: '无法连接插件广场: ' + e.message });
+    }
+  });
+
+  apiRouter.post('/marketplace/install', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { name, version } = req.body || {};
+      if (!name) { res.status(400).json({ error: '缺少插件名' }); return; }
+
+      // 从广场下载 zip
+      const listResp = await fetch(`${MARKETPLACE_URL}/api.php?action=plugins`);
+      const listData = await listResp.json();
+      const plugins = Array.isArray(listData) ? listData : [];
+      const plugin = plugins.find((p: any) => p.name === name);
+      if (!plugin) { res.status(404).json({ error: '广场中没有该插件' }); return; }
+
+      const downloadUrl = `${MARKETPLACE_URL}/api.php?action=download&id=${encodeURIComponent(plugin.name)}`;
+      const zipResp = await fetch(downloadUrl);
+      if (!zipResp.ok) { res.status(502).json({ error: '下载失败' }); return; }
+      const zipBuf = Buffer.from(await zipResp.arrayBuffer());
+
+      // 解压到临时目录
+      const AdmZip = require('adm-zip');
+      const zip = new AdmZip(zipBuf);
+      const entries = zip.getEntries();
+
+      // 分析结构：找 manifest.json
+      let rootPrefix = '';
+      const manifestEntry = entries.find((e: any) => e.entryName.endsWith('/manifest.json') || e.entryName === 'manifest.json');
+      if (!manifestEntry) { res.status(400).json({ error: 'zip 中没有 manifest.json' }); return; }
+      const manifestJson = manifestEntry.getData().toString('utf8');
+      const manifest = JSON.parse(manifestJson);
+      const pluginName = manifest.name || name;
+
+      // 判断是否有根目录前缀
+      if (manifestEntry.entryName !== 'manifest.json') {
+        rootPrefix = manifestEntry.entryName.replace('manifest.json', '');
+      }
+
+      const destDir = path.join(PLUGINS_DIR, pluginName);
+
+      // 保存旧 config.json
+      let oldConfig: string | null = null;
+      const configPath = path.join(destDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        oldConfig = fs.readFileSync(configPath, 'utf8');
+      }
+
+      // 清理旧文件（保留 meta.json 和 config.json）
+      if (fs.existsSync(destDir)) {
+        for (const f of fs.readdirSync(destDir)) {
+          if (f === 'meta.json' || f === 'config.json') continue;
+          const fp = path.join(destDir, f);
+          fs.rmSync(fp, { recursive: true, force: true });
+        }
+      }
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
+      // 解压所有文件
+      for (const entry of entries) {
+        if (entry.isDirectory) continue;
+        let targetName = entry.entryName;
+        if (rootPrefix && targetName.startsWith(rootPrefix)) {
+          targetName = targetName.slice(rootPrefix.length);
+        }
+        if (!targetName || targetName === 'manifest.json') continue;
+        const targetPath = path.join(destDir, targetName);
+        const targetDir = path.dirname(targetPath);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        fs.writeFileSync(targetPath, entry.getData());
+      }
+
+      // 恢复旧 config.json
+      if (oldConfig) {
+        fs.writeFileSync(configPath, oldConfig, 'utf8');
+      }
+
+      logger.info(`[Marketplace] 已安装插件 ${pluginName} v${manifest.version || '?'}`);
+      res.json({ success: true, name: pluginName, version: manifest.version });
+    } catch (e: any) {
+      logger.error(`[Marketplace] 安装失败: ${e.message}`);
+      res.status(500).json({ error: '安装失败: ' + e.message });
+    }
+  });
+
   // ===== 配置 =====
 
   apiRouter.get('/config', requireAuth, (_req: Request, res: Response) => {
