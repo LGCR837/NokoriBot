@@ -193,7 +193,7 @@ function Field({
     return (
       <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
         <Label className="text-sm">{prettyLabel}</Label>
-        <ToggleSwitch checked={value} onCheckedChange={onChange} />
+        <ToggleSwitch value={value} onChange={(v) => onChange(v)} ariaLabel={prettyLabel} />
       </div>
     );
   }
