@@ -1,4 +1,4 @@
-// AI 生图插件（agnesimage）
+// AI 生图插件（imagecreate）
 // 调用 Agnes Image 2.1 Flash API 生成图片
 // 触发方式：生图 xxxx / 绘画 xxxx（不区分大小写）
 import axios from 'axios';

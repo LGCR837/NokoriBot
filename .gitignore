@@ -21,8 +21,8 @@ plugins/*
 !plugins/nokoristats/**
 !plugins/openaichatllmtts/
 !plugins/openaichatllmtts/**
-!plugins/agnesimage/
-!plugins/agnesimage/**
+!plugins/imagecreate/
+!plugins/imagecreate/**
 
 # ===== 插件广场（私有，不提交） =====
 marketplace/

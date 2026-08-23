@@ -1,8 +1,0 @@
-{
-  "name": "agnesimage",
-  "version": "1.0.0",
-  "description": "AI 生图插件，使用 Agnes Image 2.1 Flash（生图/绘画 + 提示词）",
-  "author": "Aoharu Reverie",
-  "enabled": true,
-  "main": "index.ts"
-}
