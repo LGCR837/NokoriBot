@@ -4,6 +4,7 @@ import express, { Express, Request, Response, Router } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import AdmZip from 'adm-zip';
 import { ConfigManager } from '../config';
 import { BotClient } from '../protocol/bot';
 import { logger, readRecentLogs, readStructuredLogs, setLogLevel } from '../logger';
@@ -351,7 +352,6 @@ export function createWebServer(opts: WebUiOptions): Express {
       const zipBuf = Buffer.from(await zipResp.arrayBuffer());
 
       // 解压到临时目录
-      const AdmZip = require('adm-zip');
       const zip = new AdmZip(zipBuf);
       const entries = zip.getEntries();
 
