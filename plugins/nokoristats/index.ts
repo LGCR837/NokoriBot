@@ -70,8 +70,8 @@ function getLoadedPlugins(pluginsDir: string): Array<{ name: string; version: st
 }
 
 export function onLoad(api: PluginAPI) {
-  // 推算 plugins 目录：当前文件 plugins/nokoristats/index.ts → 上溯一级到 plugins/
-  const pluginsDir = path.resolve(__dirname, '..');
+  // plugins 目录：直接用进程工作目录 + plugins
+  const pluginsDir = path.join(process.cwd(), 'plugins');
 
   api.onMessage(async (msg: ParsedMessage) => {
     if (msg.fromSelf) return;
