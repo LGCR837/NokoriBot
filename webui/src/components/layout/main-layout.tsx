@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useRouterState } from '@tanstack/react-router';
 import { Minimize2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sidebar } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/top-bar';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -128,8 +127,8 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
         {!kiosk && notice}
 
         <main className={cn('flex min-h-0 flex-1 flex-col')}>
-          <ScrollArea className="flex-1 min-h-0" viewportClassName="[&>div]:!block [&>div]:!min-h-full">
-            <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 2xl:max-w-[1600px]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8 2xl:max-w-[1600px]">
               <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={pathname}
@@ -137,12 +136,13 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
                   transition={reduce ? { duration: 0 } : { duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex flex-1 flex-col"
                 >
                   {children}
                 </motion.div>
               </AnimatePresence>
             </div>
-          </ScrollArea>
+          </div>
         </main>
       </div>
     </div>
