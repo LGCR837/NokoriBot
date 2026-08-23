@@ -128,7 +128,7 @@ export function MainLayout({ status, onLogout, notice, children }: MainLayoutPro
         {!kiosk && notice}
 
         <main className={cn('flex min-h-0 flex-1 flex-col')}>
-          <ScrollArea className="flex-1 min-h-0" viewportClassName="[&>div]:!block">
+          <ScrollArea className="flex-1 min-h-0" viewportClassName="[&>div]:!block [&>div]:!min-h-full">
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 2xl:max-w-[1600px]">
               <AnimatePresence initial={false} mode="wait">
                 <motion.div
