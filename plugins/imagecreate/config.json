@@ -1,6 +1,6 @@
 {
-  "apiKey": "",
-  "model": "agnes-image-2.0-flash",
-  "size": "1024x1024",
+  "apiKey": "sk-HZ3s0Uri1Vfx3se3RiEHsNCN7GO0w27Esy7RQegcsiGr1P1p",
+  "model": "agnes-image-2.1-flash",
+  "size": "1K",
   "timeoutMs": 120000
 }

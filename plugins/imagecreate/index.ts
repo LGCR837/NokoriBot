@@ -45,8 +45,8 @@ async function downloadAndUpload(url: string, api: PluginAPI): Promise<string> {
 export function onLoad(api: PluginAPI) {
   const config = api.config || {};
   const apiKey: string = config.apiKey || '';
-  const model: string = config.model || 'agnes-image-2.0-flash';
-  const size: string = config.size || '1024x1024';
+  const model: string = config.model || 'agnes-image-2.1-flash';
+  const size: string = config.size || '1K';
   const timeoutMs: number = parseInt(config.timeoutMs, 10) || 120000;
 
   if (!apiKey) {
