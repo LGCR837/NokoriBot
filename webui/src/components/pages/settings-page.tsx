@@ -1463,10 +1463,9 @@ function AboutPanel() {
                 v{__APP_VERSION__}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">一个使用 TypeScript 编写的 OldChat 机器人框架</p>
           </motion.div>
           <p className="max-w-md text-[13px] leading-relaxed text-muted-foreground">
-            基于 OneBot v11 协议，支持插件系统、好友/群组管理等功能。
+            一个使用 TypeScript 编写的 OldChat 机器人框架
           </p>
         </CardContent>
       </Card>
@@ -1478,12 +1477,12 @@ function AboutPanel() {
           <div className="flex flex-col items-center gap-1">
             <p className="text-sm font-medium">喜欢 NokoriBot？给个 Star 支持一下</p>
             <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-              开源不易，你的 ⭐ 是持续维护的最大动力。
+              由于学业问题，我真的做不到经常更新，能用就行
             </p>
           </div>
           <Button asChild className="w-full max-w-xs">
             <a href={REPO_URL} target="_blank" rel="noreferrer noopener">
-              <Github className="size-4" /> 去 GitHub 点 Star
+              <Github className="size-4" /> 前往 GitHub 仓库
             </a>
           </Button>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-1 text-[12px]">
