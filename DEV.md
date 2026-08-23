@@ -1,6 +1,6 @@
 # NokoriBot 框架完整开发文档
 
-> 版本 3 | 适用于 OldChat v1.3.61+（含 NCUID 体系）  
+> 版本 3 | 适用于 OldChat v1.3.61+
 > 核心协议层基于官方 `oldchat-api-sdk-javascript` SDK 实现（宿主适配见 src/protocol/sdk.ts）  
 > **设计理念**：插件拥有完整的 Node.js 能力，无沙盒限制，开发自由
 
@@ -64,7 +64,7 @@
 - ✅ 账号密码登录，自动处理 Token 刷新与重登录
 
 ### 命名由来
-**Nokori**（残り）在日语中意为"剩余、遗留"，象征该项目从 `oldchat-kivotos-next` 前端项目中"遗留"下来的协议实现。
+**Nokori** - **残り**
 
 ---
 
@@ -134,7 +134,7 @@
 
 ### 4.1 安装
 ```bash
-git clone https://github.com/your-org/nokoribot.git
+git clone https://github.com/LGCR837/NokoriBot.git
 cd nokoribot
 npm install
 ```
@@ -883,35 +883,4 @@ A：在 WebUI 的配置页面修改用户名密码，保存后 Bot 会自动重�
 **Q：如何手动触发登录？**  
 A：在 WebUI 中点击"重新登录"按钮，或调用 `POST /api/bot/login`。
 
----
 
-## 12. 附录：从 app.js 迁移
-
-框架的加密与消息解析模块直接取自 `app.js`，迁移步骤：
-
-1. 复制 `Crypto` 对象到 `src/protocol/crypto.ts`，将 `window.crypto` 替换为 `globalThis.crypto`。
-2. 复制 `ensureWsSession`、`decryptEnvelope` 函数。
-3. 复制 `parseMessageBody` 中的 v2 解析逻辑。
-4. 复制 NCUID 工具函数（`toUidParam`、`withUidParam`、`profileQuery`、`isSelfUid`；注意 ncuid 不一定以 `nc_` 开头，参数统一使用 `_uid` 系列）。
-5. 将 `apiFetch` 改造为 `ApiClient` 类，保留 Token 刷新逻辑，增加密码重登录。
-6. 将 DOM 操作（如 `appendMessage`）替换为事件发射。
-
----
-
-## 结语
-
-NokoriBot 将你在 `oldchat-kivotos-next` 中实现的协议层无缝移植到 Node.js，并提供了完整的插件管理和 WebUI 支持。
-
-**核心设计理念**：
-- **协议准确**：源自生产环境验证的前端代码
-- **插件自由**：无沙盒限制，完整的 Node.js 能力
-- **管理便捷**：WebUI 实时管理，热加载即时生效
-
-无论你是开发个人助手还是社区管理机器人，都能快速上手，自由扩展。
-
-**项目名称**：NokoriBot  
-**仓库地址**：（待补充）  
-**文档版本**：2.0.0  
-**最后更新**：2025-08-02
-
-Happy Boting! 🚀
