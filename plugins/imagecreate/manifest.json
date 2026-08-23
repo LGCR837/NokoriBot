@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "description": "AI 生图插件(生图/绘画 提示词)",
   "author": "Aoharu Reverie",
-  "enabled": true,
+  "enabled": false,
   "main": "index.ts"
 }

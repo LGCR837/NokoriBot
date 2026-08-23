@@ -4,8 +4,6 @@
 import axios from 'axios';
 import { PluginAPI, ParsedMessage } from '../../src/types';
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 /** 调用 Agnes AI 图片生成 API，返回图片 URL */
 async function generateImage(
   prompt: string,
@@ -33,11 +31,23 @@ async function generateImage(
   return url;
 }
 
+/** 下载图片并上传到 OC 服务器，返回 OC 媒体 URL */
+async function downloadAndUpload(url: string, api: PluginAPI): Promise<string> {
+  const resp = await axios.get(url, { responseType: 'arraybuffer', timeout: 60000 });
+  const buf = Buffer.from(resp.data);
+  const form = new FormData();
+  form.append('file', new Blob([buf], { type: 'image/png' }), 'image.png');
+  const upData: any = await api.upload('/v1/media', form);
+  const mediaUrl = upData?.url || upData?.media_url || upData?.data?.url;
+  if (!mediaUrl) throw new Error('图片上传到 OC 服务器失败');
+  return mediaUrl;
+}
+
 export function onLoad(api: PluginAPI) {
   const config = api.config || {};
   const apiKey: string = config.apiKey || '';
   const model: string = config.model || 'agnes-image-2.1-flash';
-  const size: string = config.size || '2K';
+  const size: string = config.size || '1K';
   const ratio: string = config.ratio || '1:1';
   const timeoutMs: number = parseInt(config.timeoutMs, 10) || 120000;
 
@@ -66,15 +76,20 @@ export function onLoad(api: PluginAPI) {
       return;
     }
 
+    // 先发送提示消息
+    await api.reply(msg, `正在生成【${prompt}】哦，请稍等一下喵~`);
     api.log('info', `生图请求: ${prompt.slice(0, 60)}`);
 
     try {
-      const url = await generateImage(prompt, { apiKey, model, size, ratio, timeoutMs });
+      const remoteUrl = await generateImage(prompt, { apiKey, model, size, ratio, timeoutMs });
+
+      // 下载图片并重新上传到 OC 服务器
+      const mediaUrl = await downloadAndUpload(remoteUrl, api);
 
       // 发送图片
       const target = msg.type === 'group' && msg.groupId ? msg.groupId : msg.from;
       const type: 'direct' | 'group' = msg.type === 'group' ? 'group' : 'direct';
-      await api.sendMedia(target, url, 'image', '', type);
+      await api.sendMedia(target, mediaUrl, 'image', '', type);
       api.log('info', `生图完成: ${prompt.slice(0, 40)}`);
     } catch (e: any) {
       api.log('error', `生图失败: ${e.message}`);
