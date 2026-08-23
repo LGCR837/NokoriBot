@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApi } from '@/lib/api';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
-import { SkeletonSwap } from '@/components/interior/skeleton-swap';
 
 interface BotConfig {
   backendOrigin: string;
@@ -59,7 +58,7 @@ export function ConfigPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">NokoriBot 配置</h1>
@@ -71,12 +70,17 @@ export function ConfigPage() {
         </Button>
       </div>
 
-      <SkeletonSwap ready={!loading} reserve={200} lines={6} lineHeight={80} barHeight={12} label="配置加载中">
-        {error ? (
-          <Card>
-            <CardContent className="py-8 text-center text-destructive">{error}</CardContent>
-          </Card>
-        ) : config ? (
+      {loading ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-20 text-sm text-muted-foreground">
+            配置加载中…
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-8 text-center text-destructive">{error}</CardContent>
+        </Card>
+      ) : config ? (
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -158,7 +162,6 @@ export function ConfigPage() {
             </Card>
           </div>
         ) : null}
-      </SkeletonSwap>
     </div>
   );
 }
