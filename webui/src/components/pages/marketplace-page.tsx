@@ -61,6 +61,7 @@ export function MarketplacePage() {
   };
 
   const isInstalled = (name: string) => localPlugins.some(p => p.name === name);
+  const getLocalVersion = (name: string) => localPlugins.find(p => p.name === name)?.version;
 
   return (
     <div className="space-y-6">
@@ -129,7 +130,11 @@ export function MarketplacePage() {
                       ) : (
                         <ArrowDownToLine className="size-3.5" />
                       )}
-                      {installing === plugin.name ? '安装中' : installed ? '更新' : '安装'}
+                      {installing === plugin.name
+                        ? '安装中'
+                        : installed
+                          ? (getLocalVersion(plugin.name) === plugin.version ? '已最新' : '更新')
+                          : '安装'}
                     </Button>
                   </div>
                   {plugin.uploaded_by && (
