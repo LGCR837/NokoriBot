@@ -8,7 +8,7 @@ import AdmZip from 'adm-zip';
 import { ConfigManager } from '../config';
 import { BotClient } from '../protocol/bot';
 import { logger, readRecentLogs, readStructuredLogs, setLogLevel } from '../logger';
-import { WEBUI_PUBLIC_DIR } from '../paths';
+import { WEBUI_PUBLIC_DIR, PLUGINS_DIR } from '../paths';
 import { toUidParam } from '../protocol/ncuid';
 
 export interface WebUiOptions {
