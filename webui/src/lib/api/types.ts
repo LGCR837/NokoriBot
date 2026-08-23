@@ -91,6 +91,7 @@ export interface ApiClient {
     exportTrace(): Promise<{ text: string; filename: string }>;
   };
   bot: {
+    login(username?: string, password?: string): Promise<void>;
     restart(): Promise<void>;
     stop(): Promise<void>;
   };

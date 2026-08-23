@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Power, PowerOff, RefreshCw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useApi } from '@/lib/api';
 import { useActionFeedback } from '@/contexts/ActionFeedbackContext';
 
@@ -23,6 +24,8 @@ export function ConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'restart' | 'stop' | 'relogin' | null>(null);
+  const { runAction } = useActionFeedback();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +60,30 @@ export function ConfigPage() {
     setConfig({ ...config, [key]: value });
   };
 
+  const handleRestart = async () => {
+    await runAction(
+      { title: '正在重启 Bot…', successTitle: 'Bot 已重启', errorTitle: '重启失败' },
+      () => api.bot.restart(),
+    );
+    setConfirmAction(null);
+  };
+
+  const handleStop = async () => {
+    await runAction(
+      { title: '正在关闭 Bot…', successTitle: 'Bot 已关闭', errorTitle: '关闭失败' },
+      () => api.bot.stop(),
+    );
+    setConfirmAction(null);
+  };
+
+  const handleRelogin = async () => {
+    await runAction(
+      { title: '正在重新登录…', successTitle: '已重新登录', errorTitle: '重新登录失败' },
+      () => api.bot.login(),
+    );
+    setConfirmAction(null);
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
@@ -69,6 +96,47 @@ export function ConfigPage() {
           保存配置
         </Button>
       </div>
+
+      <div className="flex gap-3">
+        <Button variant="outline" size="sm" onClick={() => setConfirmAction('relogin')}>
+          <RefreshCw className="size-4" />
+          重新登录
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setConfirmAction('restart')}>
+          <Power className="size-4" />
+          重启 Bot
+        </Button>
+        <Button variant="destructive" size="sm" onClick={() => setConfirmAction('stop')}>
+          <PowerOff className="size-4" />
+          关闭 Bot
+        </Button>
+      </div>
+
+      <ConfirmDialog
+        open={confirmAction === 'relogin'}
+        onOpenChange={(o) => !o && setConfirmAction(null)}
+        title="重新登录？"
+        description="将断开当前连接并重新登录账号"
+        confirmText="重新登录"
+        onConfirm={handleRelogin}
+      />
+      <ConfirmDialog
+        open={confirmAction === 'restart'}
+        onOpenChange={(o) => !o && setConfirmAction(null)}
+        title="重启 Bot？"
+        description="将断开并重新启动 Bot 进程"
+        confirmText="重启"
+        onConfirm={handleRestart}
+      />
+      <ConfirmDialog
+        open={confirmAction === 'stop'}
+        onOpenChange={(o) => !o && setConfirmAction(null)}
+        title="关闭 Bot？"
+        description="将停止 Bot 进程，需要手动重新启动"
+        confirmText="关闭"
+        destructive
+        onConfirm={handleStop}
+      />
 
       {loading ? (
         <Card>

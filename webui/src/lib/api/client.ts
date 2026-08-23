@@ -121,6 +121,7 @@ class HttpApiClient implements ApiClient {
     };
 
     this.bot = {
+      login: async (username?: string, password?: string) => { await this.postJson('/api/bot/login', { username, password }); },
       restart: async () => { await this.postJson('/api/bot/restart'); },
       stop: async () => { await this.postJson('/api/stop'); },
     };

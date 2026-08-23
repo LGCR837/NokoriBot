@@ -328,6 +328,7 @@ export function createWebServer(opts: WebUiOptions): Express {
       mediaOrigin: cfg.mediaOrigin,
       logLevel: cfg.logLevel,
       webuiPort: cfg.webuiPort,
+      webuiHost: cfg.webuiHost,
       deviceId: cfg.deviceId,
       user: (cfg as any).user,
     });
@@ -335,7 +336,7 @@ export function createWebServer(opts: WebUiOptions): Express {
 
   apiRouter.post('/config', requireAuth, (req: Request, res: Response) => {
     const body = req.body || {};
-    const allowed = ['backendOrigin', 'mediaOrigin', 'logLevel', 'webuiPort'];
+    const allowed = ['backendOrigin', 'mediaOrigin', 'logLevel', 'webuiPort', 'webuiHost'];
     const update: Record<string, any> = {};
     for (const key of allowed) {
       if (body[key] !== undefined) update[key] = body[key];

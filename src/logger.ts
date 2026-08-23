@@ -71,15 +71,26 @@ export function readRecentLogs(limit = 200): string[] {
 
 /** 结构化日志行 */
 export interface LogEntry {
-  timestamp: string;
+  id: number;
+  time: string;
   level: string;
+  scope: string;
   message: string;
+  line: string;
+}
+
+let logSeq = 0;
+
+/** 从消息中提取 [xxx] 格式的 scope */
+function extractScope(message: string): string {
+  const m = message.match(/^\[([^\]]+)\]/);
+  return m ? m[1] : '';
 }
 
 /**
  * 读取最近日志并解析为结构化条目（WebUI 彩色渲染使用）。
  * combined.log 每行为 winston JSON（{ level, message, timestamp }），
- * 解析失败的行回退为原始文本（level=info, timestamp=''）。
+ * 解析失败的行回退为原始文本（level=info, time=''）。
  */
 export function readStructuredLogs(limit = 300): LogEntry[] {
   const lines = readRecentLogs(limit);
@@ -87,15 +98,23 @@ export function readStructuredLogs(limit = 300): LogEntry[] {
     try {
       const obj = JSON.parse(line);
       if (obj && typeof obj === 'object') {
+        const timestamp = String(obj.timestamp || '');
+        const level = String(obj.level || 'info');
+        const message = typeof obj.message === 'string' ? obj.message : JSON.stringify(obj.message ?? '');
+        const scope = extractScope(message);
         return {
-          timestamp: String(obj.timestamp || ''),
-          level: String(obj.level || 'info'),
-          message: typeof obj.message === 'string' ? obj.message : JSON.stringify(obj.message ?? ''),
+          id: ++logSeq,
+          time: timestamp,
+          level,
+          scope,
+          message,
+          line: `[${timestamp}] ${level}: ${message}`,
         };
       }
     } catch {
       // 非 JSON 行，回退
     }
-    return { timestamp: '', level: 'info', message: line };
+    const raw = line;
+    return { id: ++logSeq, time: '', level: 'info', scope: '', message: raw, line: raw };
   });
 }
