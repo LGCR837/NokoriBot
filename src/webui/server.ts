@@ -19,7 +19,20 @@ export interface WebUiOptions {
 }
 
 // ===== 简易 JWT 实现 =====
-const JWT_SECRET = crypto.randomBytes(32).toString('hex');
+// 持久化 JWT_SECRET，重启后保持有效
+function loadOrCreateJwtSecret(): string {
+  const secretPath = path.join(require('../paths').PROJECT_ROOT, '.jwt_secret');
+  try {
+    if (fs.existsSync(secretPath)) {
+      const secret = fs.readFileSync(secretPath, 'utf8').trim();
+      if (secret.length === 64) return secret; // hex-encoded 32 bytes
+    }
+  } catch { /* ignore */ }
+  const secret = crypto.randomBytes(32).toString('hex');
+  try { fs.writeFileSync(secretPath, secret, 'utf8'); } catch { /* ignore */ }
+  return secret;
+}
+const JWT_SECRET = loadOrCreateJwtSecret();
 const TOKEN_TTL = 24 * 60 * 60 * 1000; // 24h
 
 function createToken(): string {

@@ -13,6 +13,7 @@ logs/
 
 # ===== 配置（含账号密码与 token，勿提交） =====
 config.json
+.jwt_secret
 
 # ===== 插件目录（含本地数据，不提交） =====
 plugins/*
