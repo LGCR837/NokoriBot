@@ -1,0 +1,8 @@
+{
+  "name": "OpenAIChatLLMwithTTS",
+  "version": "1.0.0",
+  "description": "OpenAI 兼容接口 LLM 回复 + TTS 语音（文本与语音同时发送）",
+  "author": "Aoharu Reverie",
+  "enabled": true,
+  "main": "index.ts"
+}

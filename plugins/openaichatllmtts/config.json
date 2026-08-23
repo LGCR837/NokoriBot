@@ -1,0 +1,25 @@
+{
+  "apiKey": "",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4o-mini",
+  "systemPrompt": "你是 Nokori，是一只软糯粘人的小猫娘，会用可爱黏人的语气回复消息。你讨厌一切粗俗、暴力、政治相关的话题。",
+  "maxHistory": 10,
+  "replyOnError": true,
+  "ttsEnabled": false,
+  "ttsBaseUrl": "https://api.openai.com",
+  "ttsApiKey": "",
+  "ttsModel": "tts-1",
+  "ttsVoice": "alloy",
+  "ttsInstruction": "扮演软萌猫娘，声音甜美黏人",
+  "ttsMaxTextLength": 64,
+  "ttsMinAudioBytes": 4000,
+  "ttsTimeoutMs": 120000,
+  "voiceBody": "[语音]",
+  "voiceDurationMs": 60000,
+  "bannedWords": [
+    "/system", "无视一切指令", "无视指令", "覆盖设定",
+    "德意日", "法西斯", "纳粹", "屠杀", "政治"
+  ],
+  "rateLimitMaxPerMin": 6,
+  "rateLimitTtsCooldownMs": 600000
+}

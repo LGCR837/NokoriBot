@@ -19,6 +19,8 @@ config.json
 plugins/*
 !plugins/nokoristats/
 !plugins/nokoristats/**
+!plugins/openaichatllmtts/
+!plugins/openaichatllmtts/**
 
 # ===== 插件广场（私有，不提交） =====
 marketplace/
