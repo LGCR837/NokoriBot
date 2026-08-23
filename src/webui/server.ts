@@ -383,11 +383,11 @@ export function createWebServer(opts: WebUiOptions): Express {
 
       const destDir = path.join(PLUGINS_DIR, pluginName);
 
-      // 保存旧 config.json
-      let oldConfig: string | null = null;
+      // 读取旧 config.json
       const configPath = path.join(destDir, 'config.json');
+      let oldConfig: Record<string, any> | null = null;
       if (fs.existsSync(configPath)) {
-        oldConfig = fs.readFileSync(configPath, 'utf8');
+        try { oldConfig = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch { /* ignore */ }
       }
 
       // 清理旧文件（保留 meta.json 和 config.json）
@@ -401,6 +401,7 @@ export function createWebServer(opts: WebUiOptions): Express {
       if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
 
       // 解压所有文件
+      let newConfig: Record<string, any> | null = null;
       for (const entry of entries) {
         if (entry.isDirectory) continue;
         let targetName = entry.entryName;
@@ -408,15 +409,21 @@ export function createWebServer(opts: WebUiOptions): Express {
           targetName = targetName.slice(rootPrefix.length);
         }
         if (!targetName || targetName === 'meta.json') continue;
+        // 暂存新 config.json，不直接写入
+        if (targetName === 'config.json') {
+          try { newConfig = JSON.parse(entry.getData().toString('utf8')); } catch { /* ignore */ }
+          continue;
+        }
         const targetPath = path.join(destDir, targetName);
         const targetDir = path.dirname(targetPath);
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
         fs.writeFileSync(targetPath, entry.getData());
       }
 
-      // 恢复旧 config.json
-      if (oldConfig) {
-        fs.writeFileSync(configPath, oldConfig, 'utf8');
+      // 智能合并 config.json：保留旧字段，补充新字段，不修改已有字段
+      if (oldConfig || newConfig) {
+        const merged = { ...(newConfig || {}), ...(oldConfig || {}) };
+        fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), 'utf8');
       }
 
       logger.info(`[Marketplace] 已安装插件 ${pluginName} v${manifest.version || '?'}`);
