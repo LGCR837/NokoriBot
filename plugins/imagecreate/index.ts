@@ -1,5 +1,5 @@
 // AI 生图插件（imagecreate）
-// 调用 Agnes Image 2.1 Flash API 生成图片
+// 调用 Agnes Image 2.0 Flash API 生成图片
 // 触发方式：生图 xxxx / 绘画 xxxx（不区分大小写）
 import axios from 'axios';
 import { PluginAPI, ParsedMessage } from '../../src/types';
@@ -7,7 +7,7 @@ import { PluginAPI, ParsedMessage } from '../../src/types';
 /** 调用 Agnes AI 图片生成 API，返回图片 URL */
 async function generateImage(
   prompt: string,
-  opts: { apiKey: string; model: string; size: string; ratio: string; timeoutMs: number }
+  opts: { apiKey: string; model: string; size: string; timeoutMs: number }
 ): Promise<string> {
   const resp = await axios.post(
     'https://api.agnes-ai.cn/v1/images/generations',
@@ -15,7 +15,6 @@ async function generateImage(
       model: opts.model,
       prompt,
       size: opts.size,
-      ratio: opts.ratio,
       extra_body: { response_format: 'url' },
     },
     {
@@ -46,9 +45,8 @@ async function downloadAndUpload(url: string, api: PluginAPI): Promise<string> {
 export function onLoad(api: PluginAPI) {
   const config = api.config || {};
   const apiKey: string = config.apiKey || '';
-  const model: string = config.model || 'agnes-image-2.1-flash';
-  const size: string = config.size || '1K';
-  const ratio: string = config.ratio || '1:1';
+  const model: string = config.model || 'agnes-image-2.0-flash';
+  const size: string = config.size || '1024x1024';
   const timeoutMs: number = parseInt(config.timeoutMs, 10) || 120000;
 
   if (!apiKey) {
@@ -81,7 +79,7 @@ export function onLoad(api: PluginAPI) {
     api.log('info', `生图请求: ${prompt.slice(0, 60)}`);
 
     try {
-      const remoteUrl = await generateImage(prompt, { apiKey, model, size, ratio, timeoutMs });
+      const remoteUrl = await generateImage(prompt, { apiKey, model, size, timeoutMs });
 
       // 下载图片并重新上传到 OC 服务器
       const mediaUrl = await downloadAndUpload(remoteUrl, api);
