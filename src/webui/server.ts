@@ -394,7 +394,7 @@ export function createWebServer(opts: WebUiOptions): Express {
         if (rootPrefix && targetName.startsWith(rootPrefix)) {
           targetName = targetName.slice(rootPrefix.length);
         }
-        if (!targetName || targetName === 'manifest.json') continue;
+        if (!targetName || targetName === 'meta.json') continue;
         const targetPath = path.join(destDir, targetName);
         const targetDir = path.dirname(targetPath);
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });

@@ -24,9 +24,11 @@ export function MarketplacePage() {
     setLoading(true);
     try {
       const [market, local] = await Promise.all([
-        api.marketplace.list(),
-        api.plugins.list(),
+        api.marketplace.list().catch(e => { console.error('marketplace list failed', e); return []; }),
+        api.plugins.list().catch(e => { console.error('plugins list failed', e); return []; }),
       ]);
+      console.log('[Marketplace] market:', market.map((p: any) => p.name));
+      console.log('[Marketplace] local:', local.map((p: any) => p.name));
       setMarketPlugins(market);
       setLocalPlugins(local);
     } catch (e) {
