@@ -45,11 +45,12 @@ export function ConfigPage() {
   const handleSave = async () => {
     if (!config) return;
     setSaving(true);
+    const handle = feedback.startAction({ title: '保存配置' });
     try {
       await api.config.save(config);
-      feedback.success({ title: '配置已保存', description: '重启后端以使部分配置生效' });
+      handle.succeed({ title: '配置已保存', detail: '重启后端以使部分配置生效' });
     } catch (e) {
-      feedback.error({ title: '保存失败', description: e instanceof Error ? e.message : '未知错误' });
+      handle.fail(e instanceof Error ? e.message : '未知错误', { title: '保存失败' });
     } finally {
       setSaving(false);
     }

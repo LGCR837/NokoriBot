@@ -37,7 +37,8 @@ export function PluginConfigDialog({ open, onClose, pluginName, onSaved }: Plugi
       setParsedConfig(config);
       setRawJson(JSON.stringify(config, null, 2));
     } catch (e) {
-      feedback.error({ title: '加载配置失败', description: e instanceof Error ? e.message : '未知错误' });
+      const handle = feedback.startAction({ title: '加载配置失败', detail: pluginName });
+      handle.fail(e instanceof Error ? e.message : '未知错误');
     } finally {
       setLoading(false);
     }
@@ -73,14 +74,15 @@ export function PluginConfigDialog({ open, onClose, pluginName, onSaved }: Plugi
   const handleSave = async () => {
     if (jsonError) return;
     setSaving(true);
+    const handle = feedback.startAction({ title: '保存配置', detail: pluginName });
     try {
       await api.plugins.saveConfig(pluginName, parsedConfig);
       await api.plugins.reload(pluginName);
-      feedback.success({ title: '配置已保存并重载', detail: pluginName });
+      handle.succeed({ title: '配置已保存并重载', detail: pluginName });
       onSaved();
       onClose();
     } catch (e) {
-      feedback.error({ title: '保存失败', description: e instanceof Error ? e.message : '未知错误' });
+      handle.fail(e instanceof Error ? e.message : '未知错误', { title: '保存失败' });
     } finally {
       setSaving(false);
     }
