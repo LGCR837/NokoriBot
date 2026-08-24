@@ -176,7 +176,8 @@ export interface PluginAPI {
     mediaUrl: string,
     msgType: 'image' | 'voice' | 'video' | 'resource',
     thumbUrl?: string,
-    type?: 'direct' | 'group'
+    type?: 'direct' | 'group',
+    opts?: { body?: string; durationMs?: number }
   ): Promise<any>;
   /** 回复当前消息（自动判断类型） */
   reply(msg: ParsedMessage, text: string): Promise<any>;
@@ -196,6 +197,8 @@ export interface PluginAPI {
   onCommand(handler: (cmd: string, args: string[], msg: ParsedMessage) => void): void;
   /** 监听框架事件（同 EventBus） */
   on(event: string, listener: (...args: any[]) => void): void;
+  /** 上传文件到服务器（返回服务器路径，如 /v1/uploads/lyrics/xxx.lrc） */
+  upload(path: string, formData: FormData): Promise<any>;
   /** 输出日志（自动添加插件名前缀） */
   log(level: string, ...args: any[]): void;
   /** 插件自身配置（从 config.json 读取） */

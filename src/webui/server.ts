@@ -354,7 +354,7 @@ export function createWebServer(opts: WebUiOptions): Express {
 
       // 从广场下载 zip
       const listResp = await fetch(`${MARKETPLACE_URL}/api.php?action=plugins`);
-      const listData = await listResp.json();
+      const listData: any = await listResp.json();
       const plugins = Array.isArray(listData) ? listData : (listData.plugins ?? []);
       const plugin = plugins.find((p: any) => p.name === name);
       if (!plugin) { res.status(404).json({ error: '广场中没有该插件' }); return; }
